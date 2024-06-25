@@ -1,0 +1,9 @@
+{
+    "routes": [
+        {
+            "server_host": "play.timolia.de",
+            "server_port": "25565",
+            "proxy_port": "25565"
+        }
+    ]
+}
