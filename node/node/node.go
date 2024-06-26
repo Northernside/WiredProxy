@@ -83,7 +83,7 @@ func handleMasterConnection() {
 	master.EnableEncryption(sharedSecret)
 
 	master.SendPacket(packet.Id_Hello, packet.Hello{
-		Key:     "node-test",
+		Key:     config.GetSystemKey(),
 		Version: "1.0.0",
 		Hash:    []byte("test"),
 	})

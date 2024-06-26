@@ -22,3 +22,4 @@ go.work
 
 *.exe
 *.key
+*.pub
