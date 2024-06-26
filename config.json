@@ -6,6 +6,13 @@
             "server_port": "25565",
             "proxy_domain": "gomme.p.wired.rip",
             "proxy_port": "25565"
+        },
+        {
+            "route_id": "92ad18f2",
+            "server_host": "test.gommehd.net",
+            "server_port": "25565",
+            "proxy_domain": "gomme-test.p.wired.rip",
+            "proxy_port": "25565"
         }
     ]
 }

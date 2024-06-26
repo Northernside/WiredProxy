@@ -77,14 +77,14 @@ func handleConnection(clientConn net.Conn) {
 	err := handshakePacket.ReadFrom(clientConn)
 	if err != nil {
 		fmt.Println("Error reading handshake packet:", err)
-		sendErrorScreen(clientConn)
+		sendErrorScreen(clientConn, 2)
 		return
 	}
 
 	route, ok := config.GetRouteByProxyDomain(string(handshakePacket.Hostname))
 	if !ok {
 		fmt.Printf("Route not found for %s\n", handshakePacket.Hostname)
-		sendErrorScreen(clientConn)
+		sendErrorScreen(clientConn, 1)
 		return
 	}
 
@@ -93,7 +93,7 @@ func handleConnection(clientConn net.Conn) {
 	serverConn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort))
 	if err != nil {
 		fmt.Println("Error connecting to server:", err)
-		sendErrorScreen(clientConn)
+		sendErrorScreen(clientConn, 0)
 		return
 	}
 	defer serverConn.Close()
@@ -112,12 +112,21 @@ func handleConnection(clientConn net.Conn) {
 	io.Copy(serverConn, clientConn)
 }
 
-func sendErrorScreen(clientConn net.Conn) {
+func sendErrorScreen(clientConn net.Conn, errorType int) {
 	var statusRequest protocol.Packet
 
 	statusRequest.ReadFrom(clientConn)
 
 	var statusResponse protocol.StatusResponse
+
+	text := "§8[§7Wired§8] §c"
+	if errorType == 0 {
+		text += "Server is offline"
+	} else if errorType == 1 {
+		text += "Route not found"
+	} else {
+		text += "Network failure"
+	}
 
 	newResponse := protocol.StatusResponseJSON{
 		Version: protocol.Version{
@@ -129,7 +138,7 @@ func sendErrorScreen(clientConn net.Conn) {
 			Online: 0,
 		},
 		Description: protocol.Description{
-			Text: "§8[§7Wired§8] §cServer is offline",
+			Text: text,
 		},
 	}
 
