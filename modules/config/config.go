@@ -27,13 +27,6 @@ type SystemConfig struct {
 var config SystemConfig
 
 func AddRoute(route protocol.Route) int {
-	// check if proxy_port is already in use
-	for _, r := range config.Routes {
-		if r.ProxyPort == route.ProxyPort {
-			return http.StatusConflict
-		}
-	}
-
 	config.Routes = append(config.Routes, route)
 	saveConfigFile("config.json")
 
