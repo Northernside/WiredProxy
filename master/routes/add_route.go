@@ -35,10 +35,6 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 
 	status := config.AddRoute(route)
 	w.WriteHeader(status)
-	if status == http.StatusConflict {
-		w.Write([]byte(`{"message": "Proxy port already in use"}`))
-		return
-	}
 
 	w.Write([]byte(`{"message": "Route added", "route_id": "` + route.RouteId + `"}`))
 }
