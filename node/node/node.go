@@ -34,7 +34,7 @@ func connectToMaster() {
 	config.Init()
 	loadPublicKey()
 	dialMaster()
-	handleMasterConnection()
+	go handleMasterConnection()
 	startProxyServer()
 }
 
