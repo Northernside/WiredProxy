@@ -8,25 +8,25 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-)
 
-// Route
-type Route struct {
-	RouteId     string `json:"route_id"`
-	ServerHost  string `json:"server_host"`
-	ServerPort  string `json:"server_port"`
-	ProxyDomain string `json:"proxy_domain"`
-	ProxyPort   string `json:"proxy_port"`
-}
+	"wired.rip/wiredutils/protocol"
+	"wired.rip/wiredutils/utils"
+)
 
 // Configuration struct
 type RoutesConfig struct {
-	Routes []Route `json:"routes"`
+	Routes []protocol.Route `json:"routes"`
 }
 
-var config RoutesConfig
+type SystemConfig struct {
+	WiredHost string           `json:"wired_host"`
+	SystemKey string           `json:"system_key"`
+	Routes    []protocol.Route `json:"routes"`
+}
 
-func AddRoute(route Route) int {
+var config SystemConfig
+
+func AddRoute(route protocol.Route) int {
 	// check if proxy_port is already in use
 	for _, r := range config.Routes {
 		if r.ProxyPort == route.ProxyPort {
@@ -38,6 +38,11 @@ func AddRoute(route Route) int {
 	saveConfigFile("config.json")
 
 	return http.StatusOK
+}
+
+func SetRoutes(routes []protocol.Route) {
+	config.Routes = routes
+	saveConfigFile("config.json")
 }
 
 func DeleteRoute(routeId string) int {
@@ -52,26 +57,45 @@ func DeleteRoute(routeId string) int {
 	return http.StatusNotFound
 }
 
-func GetRoutes() []Route {
+func GetRoutes() []protocol.Route {
 	return config.Routes
 }
 
-func GetRouteByProxyDomain(proxyDomain string) (Route, bool) {
+func GetSystemKey() string {
+	return config.SystemKey
+}
+
+func GetWiredHost() string {
+	return config.WiredHost
+}
+
+func GetRouteByProxyDomain(proxyDomain string) (protocol.Route, bool) {
 	for _, r := range config.Routes {
 		if r.ProxyDomain == proxyDomain {
 			return r, true
 		}
 	}
 
-	return Route{}, false
+	return protocol.Route{}, false
 }
 
-func init() {
+func Init() {
+	// create if not exists
+	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
+		config = SystemConfig{
+			WiredHost: "wired.rip",
+			SystemKey: fmt.Sprintf("node-%s", utils.GenerateString(8)),
+			Routes:    []protocol.Route{},
+		}
+
+		saveConfigFile("config.json")
+	}
+
 	config = readConfigFile("config.json")
 }
 
-func readConfigFile(configFile string) RoutesConfig {
-	var config RoutesConfig
+func readConfigFile(configFile string) SystemConfig {
+	var config SystemConfig
 
 	file, err := os.Open(configFile)
 	if err != nil {

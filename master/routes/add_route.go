@@ -5,7 +5,9 @@ import (
 	"encoding/hex"
 	"log"
 	"net/http"
-	config "wiredproxy/utils/config"
+
+	"wired.rip/wiredutils/config"
+	"wired.rip/wiredutils/protocol"
 )
 
 func AddRoute(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +25,7 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// add route
-	route := config.Route{
+	route := protocol.Route{
 		RouteId:     randomId(),
 		ServerHost:  serverHost,
 		ServerPort:  serverPort,

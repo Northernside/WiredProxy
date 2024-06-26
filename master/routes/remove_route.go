@@ -2,7 +2,8 @@ package routes
 
 import (
 	"net/http"
-	config "wiredproxy/utils/config"
+
+	"wired.rip/wiredutils/config"
 )
 
 func RemoveRoute(w http.ResponseWriter, r *http.Request) {
