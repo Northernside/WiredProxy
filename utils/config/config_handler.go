@@ -12,9 +12,11 @@ import (
 
 // Route
 type Route struct {
-	ServerHost string `json:"server_host"`
-	ServerPort string `json:"server_port"`
-	ProxyPort  string `json:"proxy_port"`
+	RouteId     string `json:"route_id"`
+	ServerHost  string `json:"server_host"`
+	ServerPort  string `json:"server_port"`
+	ProxyDomain string `json:"proxy_domain"`
+	ProxyPort   string `json:"proxy_port"`
 }
 
 // Configuration struct
@@ -38,9 +40,9 @@ func AddRoute(route Route) int {
 	return http.StatusOK
 }
 
-func DeleteRoute(route Route) int {
+func DeleteRoute(routeId string) int {
 	for i, r := range config.Routes {
-		if r.ServerHost == route.ServerHost && r.ServerPort == route.ServerPort && r.ProxyPort == route.ProxyPort {
+		if r.RouteId == routeId {
 			config.Routes = append(config.Routes[:i], config.Routes[i+1:]...)
 			saveConfigFile("config.json")
 			return http.StatusOK
@@ -52,6 +54,16 @@ func DeleteRoute(route Route) int {
 
 func GetRoutes() []Route {
 	return config.Routes
+}
+
+func GetRouteByProxyDomain(proxyDomain string) (Route, bool) {
+	for _, r := range config.Routes {
+		if r.ProxyDomain == proxyDomain {
+			return r, true
+		}
+	}
+
+	return Route{}, false
 }
 
 func init() {

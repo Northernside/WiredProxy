@@ -1,6 +1,9 @@
 package routes
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"log"
 	"net/http"
 	config "wiredproxy/utils/config"
 )
@@ -10,19 +13,22 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 
 	serverHost := r.URL.Query().Get("server_host")
 	serverPort := r.URL.Query().Get("server_port")
+	proxyDomain := r.URL.Query().Get("proxy_domain")
 	proxyPort := r.URL.Query().Get("proxy_port")
 
-	if serverHost == "" || serverPort == "" || proxyPort == "" {
+	if serverHost == "" || serverPort == "" || proxyDomain == "" || proxyPort == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"message": "server_host, server_port and proxy_port are required"}`))
+		w.Write([]byte(`{"message": "server_host, server_port, proxy_domain and proxy_port are required"}`))
 		return
 	}
 
 	// add route
 	route := config.Route{
-		ServerHost: serverHost,
-		ServerPort: serverPort,
-		ProxyPort:  proxyPort,
+		RouteId:     randomId(),
+		ServerHost:  serverHost,
+		ServerPort:  serverPort,
+		ProxyDomain: proxyDomain,
+		ProxyPort:   proxyPort,
 	}
 
 	status := config.AddRoute(route)
@@ -32,5 +38,16 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Write([]byte(`{"message": "Route added"}`))
+	w.Write([]byte(`{"message": "Route added", "route_id": "` + route.RouteId + `"}`))
+}
+
+func randomId() string {
+	b := make([]byte, 4)
+
+	_, err := rand.Read(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return hex.EncodeToString(b)
 }

@@ -1,8 +1,10 @@
 {
     "routes": [
         {
+            "route_id": "d7b658c1",
             "server_host": "gommehd.net",
             "server_port": "25565",
+            "proxy_domain": "gomme.p.wired.rip",
             "proxy_port": "25565"
         }
     ]
