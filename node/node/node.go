@@ -10,6 +10,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"sync"
+	"syscall"
 	"time"
 	"wirednode/protocol"
 
@@ -17,24 +20,25 @@ import (
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
 	"wired.rip/wiredutils/resolver"
-	"wired.rip/wiredutils/terminal"
 	"wired.rip/wiredutils/utils"
 )
 
-func Run() {
-	config.Init()
-	log.SetFlags(0)
-	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
-	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
-	log.Printf("Connecting to master.%s...\n", config.GetWiredHost())
+var (
+	nodeHash      string
+	wiredPub      *rsa.PublicKey
+	master        *prtcl.Conn
+	binaryDataMux = &sync.Mutex{}
+	binaryData    = make(map[string]*[][]byte)
+)
+
+func Run(detectedHash string) {
+	nodeHash = detectedHash
+
+	config.SetCurrentNodeHash(nodeHash)
+	log.Printf("Trying to connect to master.%s...\n", config.GetWiredHost())
 
 	connectToMaster()
 }
-
-var (
-	wiredPub *rsa.PublicKey
-	master   *prtcl.Conn
-)
 
 func connectToMaster() {
 	loadPublicKey()
@@ -88,7 +92,7 @@ func handleMasterConnection() {
 	master.SendPacket(packet.Id_Hello, packet.Hello{
 		Key:     config.GetSystemKey(),
 		Version: "1.0.0",
-		Hash:    []byte("test"),
+		Hash:    []byte(nodeHash),
 	})
 
 	go func() {
@@ -126,8 +130,125 @@ func handleMasterConnection() {
 			}
 
 			config.SetRoutes(routes.Routes)
+		case packet.Id_BinaryData:
+			log.Printf("Received binary data packet at %s\n", time.Now().Format("15:04:05"))
+			var bd prtcl.BinaryData
+			err := prtcl.DecodePacket(pp.Data, &bd)
+			if err != nil {
+				log.Println("Error decoding binary data:", err)
+				continue
+			}
+
+			binaryDataMux.Lock()
+			data, ok := binaryData[bd.Label]
+			if !ok {
+				binaryData[bd.Label] = &[][]byte{bd.Data}
+				binaryDataMux.Unlock()
+				continue
+			}
+
+			*binaryData[bd.Label] = append(*data, bd.Data)
+			binaryDataMux.Unlock()
+		case packet.Id_BinaryEnd:
+			log.Printf("Received binary end packet at %s\n", time.Now().Format("15:04:05"))
+			var bd prtcl.BinaryData
+			err := prtcl.DecodePacket(pp.Data, &bd)
+			if err != nil {
+				log.Println("Error decoding binary data:", err)
+				continue
+			}
+
+			func() {
+				binaryDataMux.Lock()
+				defer binaryDataMux.Unlock()
+
+				data, ok := binaryData[bd.Label]
+				if !ok {
+					log.Println("Error label is not available:", bd.Label)
+					return
+				}
+				defer delete(binaryData, bd.Label)
+
+				if bd.Label == "upgrade" {
+					err = upgrade(data)
+					if err != nil {
+						log.Println("Error upgrading binary:", err)
+					}
+
+					return
+				}
+
+				file, err := os.Create("BD_" + bd.Label)
+				if err != nil {
+					log.Println("Error creating file:", err)
+					return
+				}
+				defer file.Close()
+
+				for _, data := range *data {
+					file.Write(data)
+				}
+
+				log.Printf("Wrote binary data to %s\n", file.Name())
+			}()
 		}
 	}
+}
+
+func upgrade(data *[][]byte) error {
+	exePath, err := os.Executable()
+	if err != nil {
+		log.Fatalf("Failed to get executable path: %s", err)
+		return err
+	}
+
+	fileInfo, err := os.Stat(exePath)
+	if err != nil {
+		return err
+	}
+
+	err = os.RemoveAll(exePath)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile(exePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, fileInfo.Mode().Perm())
+	if err != nil {
+		log.Fatalf("Failed to create file: %s", err)
+		return err
+	}
+	defer file.Close()
+
+	for _, slice := range *data {
+		_, err := file.Write(slice)
+		if err != nil {
+			log.Printf("Failed to write to file: %s\n", err)
+		}
+	}
+
+	log.Println("Replaced binary")
+	file.Close()
+	err = restartSelf()
+	if err != nil {
+		log.Printf("Failed to restart self: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func restartSelf() error {
+	log.Println("Restarting ...")
+	self, err := os.Executable()
+	if err != nil {
+		log.Println("Error getting executable path:", err)
+		return err
+	}
+
+	args := os.Args
+	env := os.Environ()
+
+	return syscall.Exec(self, args, env)
 }
 
 func loadPublicKey() {

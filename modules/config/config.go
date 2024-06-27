@@ -20,9 +20,10 @@ type RoutesConfig struct {
 }
 
 type SystemConfig struct {
-	WiredHost string           `json:"wired_host"`
-	SystemKey string           `json:"system_key"`
-	Routes    []protocol.Route `json:"routes"`
+	WiredHost       string           `json:"wired_host"`
+	SystemKey       string           `json:"system_key"`
+	CurrentNodeHash string           `json:"current_node_hash"`
+	Routes          []protocol.Route `json:"routes"`
 }
 
 var config SystemConfig
@@ -73,13 +74,23 @@ func GetRouteByProxyDomain(proxyDomain string) (protocol.Route, bool) {
 	return protocol.Route{}, false
 }
 
+func SetCurrentNodeHash(hash string) {
+	config.CurrentNodeHash = hash
+	saveConfigFile("config.json")
+}
+
+func GetCurrentNodeHash() string {
+	return config.CurrentNodeHash
+}
+
 func Init() {
 	// create if not exists
 	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
 		config = SystemConfig{
-			WiredHost: "wired.rip",
-			SystemKey: fmt.Sprintf("node-%s", utils.GenerateString(8)),
-			Routes:    []protocol.Route{},
+			WiredHost:       "wired.rip",
+			SystemKey:       fmt.Sprintf("node-%s", utils.GenerateString(8)),
+			CurrentNodeHash: "",
+			Routes:          []protocol.Route{},
 		}
 
 		saveConfigFile("config.json")

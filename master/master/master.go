@@ -1,12 +1,15 @@
 package master
 
 import (
+	"bufio"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 	"wiredmaster/routes"
 
@@ -45,6 +48,29 @@ func startHttpServer() {
 	customHandler("/api/routes", routes.GetRoutes, http.MethodGet)
 	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
+	customHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
+	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// send update packet
+
+		folder := r.URL.Query().Get("folder")
+		gitPullCmd := exec.Command("git", "pull")
+		gitPullCmd.Dir = folder
+		err := gitPullCmd.Run()
+		if err != nil {
+			log.Println("Error running git pull:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"message": "Internal server error"}`))
+			return
+		}
+
+		for _, client := range clients {
+			sendBinaryUpdate(client, folder)
+		}
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "Update packet sent"}`))
+	}, http.MethodGet)
 
 	http.HandleFunc("/api/connect/publickey", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -144,6 +170,11 @@ func handleConnection(conn *protocol.Conn) {
 
 			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
 
+			if string(hello.Hash) != config.GetCurrentNodeHash() {
+				log.Println("Node hash mismatch, sending update packet")
+				sendBinaryUpdate(*conn, "")
+			}
+
 			routes := config.GetRoutes()
 
 			// send routes packet
@@ -189,5 +220,58 @@ func routeUpdater() {
 				continue
 			}
 		}
+	}
+}
+
+func sendBinaryUpdate(client protocol.Conn, _folder string) {
+	log.Println("Sending update packet to", client.Address)
+
+	folder := _folder
+	if _folder == "" {
+		folder = "../node"
+	}
+
+	// check if folder exists
+	if _, err := os.Stat(folder); os.IsNotExist(err) {
+		log.Println("Error checking folder:", err)
+		return
+	}
+
+	// check if folder/mod.go exists
+	if _, err := os.Stat(folder + "/go.mod"); os.IsNotExist(err) {
+		log.Println("Error checking go.mod:", err)
+		return
+	}
+
+	// read first line of mod.go
+	// and check if its "module wirednode"
+
+	moduleFile, err := os.Open(folder + "/go.mod")
+	if err != nil {
+		log.Println("Error opening go.mod:", err)
+		return
+	}
+
+	// split by lines
+	scanner := bufio.NewScanner(moduleFile)
+	scanner.Scan()
+	if scanner.Text() != "module wirednode" {
+		log.Println("Error: go.mod is not a wirednode module")
+		return
+	}
+
+	goBuildCmd := exec.Command("go", "build")
+	goBuildCmd.Dir = folder
+	err = goBuildCmd.Run()
+	if err != nil {
+		log.Println("Error building module:", err)
+		return
+	}
+
+	filename := folder + "/wirednode"
+	err = client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
+	if err != nil {
+		log.Println("Error sending update packet to", client.Address, ":", err)
+		return
 	}
 }
