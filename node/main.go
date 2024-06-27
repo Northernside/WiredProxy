@@ -45,10 +45,9 @@ func systemdInstall() {
 		log.Fatalln("Systemd is not available on this system")
 	}
 
-	// check if user has permission to write to /etc/systemd/system
-	_, err = os.Create("/etc/systemd/system/wirednode.service")
-	if err != nil {
-		log.Fatalln("Permission denied. Run as root")
+	// check if user is root
+	if os.Geteuid() != 0 {
+		log.Fatalln("You must be root to install the service")
 	}
 
 	// write service file
@@ -86,6 +85,9 @@ func formatServiceFile() []byte {
 	wiredService = strings.ReplaceAll(wiredService, "{WORKINGDIR}", dir)
 	wiredService = strings.ReplaceAll(wiredService, "{BINPATH}", bin)
 	wiredService = strings.ReplaceAll(wiredService, "{PIDFILE}", dir+"/node.pid")
+
+	fmt.Println(wiredService)
+
 	return []byte(wiredService)
 }
 
