@@ -29,7 +29,7 @@ func Run() {
 	log.SetFlags(0)
 	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
 	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
-	log.Printf("Connecting to master.%s...\n", config.GetWiredHost())
+	log.Printf("Trying to connect to master.%s...\n", config.GetWiredHost())
 
 	connectToMaster()
 }
