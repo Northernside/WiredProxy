@@ -32,8 +32,8 @@ var (
 	binaryData    = make(map[string]*[][]byte)
 )
 
-func Run(hash string) {
-	nodeHash = hash
+func Run(detectedHash string) {
+	nodeHash = detectedHash
 
 	config.Init()
 	config.SetCurrentNodeHash(nodeHash)
