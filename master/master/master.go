@@ -50,7 +50,9 @@ func startHttpServer() {
 
 		for _, client := range clients {
 			log.Println("Sending update packet to", client.Address)
-			err := client.SendFile("upgrade", "../node/wirednode.exe", packet.Id_BinaryData, packet.Id_BinaryEnd)
+			filename := r.URL.Query().Get("filename")
+
+			err := client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
 			if err != nil {
 				log.Println("Error sending update packet to", client.Address, ":", err)
 				continue

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 	"wirednode/protocol"
 
@@ -227,6 +228,8 @@ func upgrade(data *[][]byte) error {
 	}
 
 	log.Println("Replaced binary")
+
+	syscall.Exec(exePath, os.Args, os.Environ())
 	return nil
 }
 
