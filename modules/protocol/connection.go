@@ -140,6 +140,7 @@ func (c *Conn) SendPacket(id VarInt, packet any) error {
 	if err != nil {
 		return err
 	}
+
 	//assemble and send packet
 	_, err = (&Packet{
 		ID:   id,
@@ -157,6 +158,7 @@ func MarshalPacket(id VarInt, packet any) ([]byte, error) {
 			return nil, err
 		}
 	}
+
 	buf := bytes.Buffer{}
 	_, err = (&Packet{
 		ID:   id,

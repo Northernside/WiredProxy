@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
@@ -92,20 +93,20 @@ func readConfigFile(configFile string) SystemConfig {
 
 	file, err := os.Open(configFile)
 	if err != nil {
-		fmt.Println("Error opening configuration file:", err)
+		log.Println("Error opening configuration file:", err)
 		return config
 	}
 	defer file.Close()
 
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		fmt.Println("Error reading configuration file:", err)
+		log.Println("Error reading configuration file:", err)
 		return config
 	}
 
 	err = json.Unmarshal(data, &config)
 	if err != nil {
-		fmt.Println("Error parsing configuration file:", err)
+		log.Println("Error unmarshalling configuration file:", err)
 		return config
 	}
 
@@ -115,12 +116,12 @@ func readConfigFile(configFile string) SystemConfig {
 func saveConfigFile(configFile string) {
 	data, err := json.MarshalIndent(config, "", "    ")
 	if err != nil {
-		fmt.Println("Error marshalling configuration file:", err)
+		log.Println("Error marshalling configuration file:", err)
 		return
 	}
 
 	err = ioutil.WriteFile(configFile, data, 0644)
 	if err != nil {
-		fmt.Println("Error writing configuration file:", err)
+		log.Println("Error writing configuration file:", err)
 	}
 }

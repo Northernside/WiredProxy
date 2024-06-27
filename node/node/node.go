@@ -10,7 +10,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"time"
 	"wirednode/protocol"
 
@@ -18,10 +17,17 @@ import (
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
 	"wired.rip/wiredutils/resolver"
+	"wired.rip/wiredutils/terminal"
 	"wired.rip/wiredutils/utils"
 )
 
 func Run() {
+	config.Init()
+	log.SetFlags(0)
+	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
+	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
+	log.Printf("Connecting to master.%s...\n", config.GetWiredHost())
+
 	connectToMaster()
 }
 
@@ -31,7 +37,6 @@ var (
 )
 
 func connectToMaster() {
-	config.Init()
 	loadPublicKey()
 	dialMaster()
 	go handleMasterConnection()
@@ -50,19 +55,18 @@ func dialMaster() {
 
 	for {
 		c, err = net.Dial("tcp", remoteAddr.String())
+		// c, err = net.Dial("tcp", "127.0.0.1:37420")
 		if err == nil {
 			failedAttempts = 0
 			break
 		}
 
 		failedAttempts++
-		if failedAttempts == 10 {
-			log.Println("10 connections attempts were unsuccessful, errors are no longer printed.")
-		}
-
 		if failedAttempts < 10 {
 			log.Println(err)
-			log.Println("Reconnecting in s ...")
+			log.Printf("Failed to connect to master.%s, retrying in 5 seconds...\n", config.GetWiredHost())
+		} else {
+			log.Fatalf("failed to connect to master.%s after 10 attempts, exiting...\n", config.GetWiredHost())
 		}
 
 		time.Sleep(5 * time.Second)
@@ -73,14 +77,13 @@ func dialMaster() {
 
 func handleMasterConnection() {
 	sharedSecret := []byte(utils.GenerateString(16))
-	fmt.Println("Generated shared secret:", string(sharedSecret))
 	err := master.SendPacket(packet.Id_SharedSecret, sharedSecret)
 	if err != nil {
-		log.Println("Error sending shared secret:", err)
-		return
+		log.Fatalf("error sending shared secret: %s\n", err)
 	}
 
 	master.EnableEncryption(sharedSecret)
+	log.Println("Secure connection established")
 
 	master.SendPacket(packet.Id_Hello, packet.Hello{
 		Key:     config.GetSystemKey(),
@@ -93,10 +96,8 @@ func handleMasterConnection() {
 			err := master.SendPacket(packet.Id_Ping, nil)
 			if err != nil {
 				log.Println("Error sending ping:", err)
-				return
 			}
 
-			// fmt.Println("Sent ping")
 			time.Sleep(10 * time.Second)
 		}
 	}()
@@ -105,26 +106,23 @@ func handleMasterConnection() {
 		var pp prtcl.Packet
 		err := pp.Read(master)
 		if err != nil {
-			// fmt.Println("Error reading packet:", err)
+			// log.Println("Error reading packet:", err)
 			continue
 		}
 
-		// fmt.Println("Received packet:", pp.ID)
-		// fmt.Println("Data:", pp.Data)
-
 		switch pp.ID {
 		case packet.Id_Ready:
-			fmt.Printf("Received ready at %s\n", time.Now())
+			log.Printf("Received ready packet at %s\n", time.Now().Format("15:04:05"))
 		case packet.Id_Pong:
-			// fmt.Println("Received pong")
+			// log.Printf("Received pong packet at %s\n", time.Now())
 		case packet.Id_Routes:
-			fmt.Printf("Received routes at %s\n", time.Now())
+			// log.Printf("Received routes packet at %s\n", time.Now())
 
 			var routes packet.Routes
 			prtcl.DecodePacket(pp.Data, &routes)
 
 			for _, route := range routes.Routes {
-				fmt.Printf("Received route: %s:%s pointing to %s:%s (%s)\n", route.ProxyDomain, route.ProxyPort, route.ServerHost, route.ServerPort, route.RouteId)
+				log.Printf("Received route: %s:%s pointing to %s:%s (%s)\n", route.ProxyDomain, route.ProxyPort, route.ServerHost, route.ServerPort, route.RouteId)
 			}
 
 			config.SetRoutes(routes.Routes)
@@ -135,9 +133,9 @@ func handleMasterConnection() {
 func loadPublicKey() {
 	var err error
 	for {
-		wiredPub, err = initWiredConnect()
+		wiredPub, err = requestPublicKey()
 		if err != nil {
-			log.Println("Error init WiredConnect:", err)
+			log.Println("Error requesting public key:", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -146,8 +144,9 @@ func loadPublicKey() {
 	}
 }
 
-func initWiredConnect() (*rsa.PublicKey, error) {
+func requestPublicKey() (*rsa.PublicKey, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://master.%s/api/connect/publickey", config.GetWiredHost()), nil)
+	// req, err := http.NewRequest("GET", "http://127.0.0.1:37421/api/connect/publickey", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +157,6 @@ func initWiredConnect() (*rsa.PublicKey, error) {
 	}
 
 	if res.StatusCode != 200 {
-		log.Println("Invalid status-code")
 		return nil, err
 	}
 
@@ -167,8 +165,6 @@ func initWiredConnect() (*rsa.PublicKey, error) {
 		return nil, err
 	}
 
-	fmt.Println("Received public key:\n", string(body))
-
 	publicKey, err := decodePEMToPublicKey(string(body))
 	return publicKey, err
 }
@@ -176,8 +172,7 @@ func initWiredConnect() (*rsa.PublicKey, error) {
 func decodePEMToPublicKey(pemKey string) (*rsa.PublicKey, error) {
 	block, _ := pem.Decode([]byte(pemKey))
 	if block == nil || block.Type != "PUBLIC KEY" {
-		fmt.Println("Invalid Public key")
-		os.Exit(1)
+		log.Fatalf("failed to decode PEM block containing public key")
 	}
 
 	return x509.ParsePKCS1PublicKey(block.Bytes)
@@ -186,17 +181,16 @@ func decodePEMToPublicKey(pemKey string) (*rsa.PublicKey, error) {
 func startProxyServer() {
 	listener, err := net.Listen("tcp", ":25565")
 	if err != nil {
-		fmt.Println("Error starting proxy server:", err)
-		return
+		log.Fatal("error starting minecraft proxy server:", err)
 	}
 	defer listener.Close()
 
-	fmt.Println("Proxy server started on :25565")
+	log.Println("Minecraft proxy server listening on :25565")
 
 	for {
 		clientConn, err := listener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting connection:", err)
+			log.Println("error accepting connection:", err)
 			return
 		}
 
@@ -210,14 +204,14 @@ func handleMinecraftConnection(clientConn net.Conn) {
 	var handshakePacket protocol.HandshakePacket
 	err := handshakePacket.ReadFrom(clientConn)
 	if err != nil {
-		fmt.Println("Error reading handshake packet:", err)
+		log.Println("error reading handshake packet:", err)
 		sendErrorScreen(clientConn, 2)
 		return
 	}
 
 	route, ok := config.GetRouteByProxyDomain(string(handshakePacket.Hostname))
 	if !ok {
-		fmt.Printf("Route not found for %s (Client IP: %s)\n", handshakePacket.Hostname, clientConn.RemoteAddr().String())
+		log.Printf("Route not found for %s (Client IP: %s)\n", handshakePacket.Hostname, clientConn.RemoteAddr().String())
 		sendErrorScreen(clientConn, 1)
 		return
 	}
@@ -226,7 +220,7 @@ func handleMinecraftConnection(clientConn net.Conn) {
 
 	serverConn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort))
 	if err != nil {
-		fmt.Println("Error connecting to server:", err)
+		log.Println("error connecting to server:", err)
 		sendErrorScreen(clientConn, 0)
 		return
 	}
@@ -235,15 +229,34 @@ func handleMinecraftConnection(clientConn net.Conn) {
 	// Send handshake packet to server
 	err = handshakePacket.WriteTo(serverConn)
 	if err != nil {
-		fmt.Println("Error sending handshake packet to server:", err)
+		log.Println("error writing handshake packet to server:", err)
 		return
 	}
 
 	// C->S
-	go io.Copy(clientConn, serverConn)
+	go copyData(clientConn, serverConn)
 
 	// S->C
-	io.Copy(serverConn, clientConn)
+	copyData(serverConn, clientConn)
+}
+
+func copyData(src net.Conn, dst net.Conn) {
+	// copy and log data
+	buf := make([]byte, 4096)
+
+	for {
+		// src conn
+		n, err := src.Read(buf)
+		if err != nil {
+			return
+		}
+
+		// dst conn
+		_, err = dst.Write(buf[:n])
+		if err != nil {
+			return
+		}
+	}
 }
 
 func sendErrorScreen(clientConn net.Conn, errorType int) {
