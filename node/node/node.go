@@ -19,6 +19,7 @@ import (
 	"wired.rip/wiredutils/config"
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
+	"wired.rip/wiredutils/resolver"
 	"wired.rip/wiredutils/utils"
 )
 
@@ -51,14 +52,14 @@ func dialMaster() {
 	var err error
 	failedAttempts := 0
 
-	/*remoteAddr, err := resolver.ResolveWired(config.GetWiredHost())
+	remoteAddr, err := resolver.ResolveWired(config.GetWiredHost())
 	if err != nil {
 		panic("Error resolving wired addr:" + err.Error()) // expected to recover
-	}*/
+	}
 
 	for {
-		// c, err = net.Dial("tcp", remoteAddr.String())
-		c, err = net.Dial("tcp", "127.0.0.1:37420")
+		c, err = net.Dial("tcp", remoteAddr.String())
+		// c, err = net.Dial("tcp", "127.0.0.1:37420")
 		if err == nil {
 			failedAttempts = 0
 			break
@@ -287,8 +288,8 @@ func loadPublicKey() {
 }
 
 func requestPublicKey() (*rsa.PublicKey, error) {
-	// req, err := http.NewRequest("GET", fmt.Sprintf("https://master.%s/api/connect/publickey", config.GetWiredHost()), nil)
-	req, err := http.NewRequest("GET", "http://127.0.0.1:37421/api/connect/publickey", nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://master.%s/api/connect/publickey", config.GetWiredHost()), nil)
+	// req, err := http.NewRequest("GET", "http://127.0.0.1:37421/api/connect/publickey", nil)
 	if err != nil {
 		return nil, err
 	}
