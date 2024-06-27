@@ -18,18 +18,21 @@ import (
 var wiredService string
 
 func main() {
-	args := os.Args[1:]
-
 	config.Init()
 	log.SetFlags(0)
 	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
 	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
 
-	switch args[0] {
-	case "start":
+	if (len(os.Args) > 1) {
+		args := os.Args[1:]
+		switch args[0] {
+		case "start":
+			node.Run(getFileHash())
+		case "install":
+			systemdInstall()
+		}
+	} else {
 		node.Run(getFileHash())
-	case "install":
-		systemdInstall()
 	}
 }
 
