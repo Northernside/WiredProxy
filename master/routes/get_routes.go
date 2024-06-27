@@ -3,7 +3,8 @@ package routes
 import (
 	"encoding/json"
 	"net/http"
-	config "wiredproxy/utils/config"
+
+	"wired.rip/wiredutils/config"
 )
 
 func GetRoutes(w http.ResponseWriter, r *http.Request) {

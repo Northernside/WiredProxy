@@ -1,9 +1,0 @@
-{
-    "routes": [
-        {
-            "server_host": "gommehd.net",
-            "server_port": "25565",
-            "proxy_port": "25565"
-        }
-    ]
-}

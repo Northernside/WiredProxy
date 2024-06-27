@@ -1,4 +1,4 @@
-package handshake
+package protocol
 
 import (
 	"bytes"
@@ -6,101 +6,24 @@ import (
 	"io"
 )
 
-type (
-	unsignedShort uint16
-	String        string
-	varInt        int32
-)
-
-type HandshakePacket struct {
-	PacketId  varInt
-	Version   varInt
-	Hostname  String
-	Port      unsignedShort
-	NextState varInt
+type Packet struct {
+	ID   varInt
+	Data *bytes.Buffer
 }
 
-func ReadPacket(c io.Reader) (*HandshakePacket, error) {
-	var packetLength varInt
-	_, err := packetLength.readFrom(c)
-	if err != nil {
-		return nil, err
-	}
-
-	var packet_id varInt
-	l2, err := packet_id.readFrom(c)
-	if err != nil {
-		return nil, err
-	}
-
-	b := make([]byte, int(packetLength)-int(l2))
-	_, err = io.ReadFull(c, b)
-	if err != nil {
-		return nil, err
-	}
-
-	buf := bytes.NewReader(b)
-
-	s := HandshakePacket{}
-	s.PacketId = packet_id
-	_, err = s.Version.readFrom(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = s.Hostname.readFrom(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = s.Port.readFrom(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = s.NextState.readFrom(buf)
-	return &s, err
-}
-
-func WritePacket(packet HandshakePacket, c io.Writer) error {
-	buf := bytes.NewBuffer(make([]byte, 0))
-
-	_, err := varInt(packet.PacketId).writeTo(buf)
-
-	_, err = packet.Version.writeTo(buf)
-	if err != nil {
-		return err
-	}
-
-	_, err = packet.Hostname.writeTo(buf)
-	if err != nil {
-		return err
-	}
-
-	_, err = packet.Port.writeTo(buf)
-	if err != nil {
-		return err
-	}
-
-	_, err = packet.NextState.writeTo(buf)
-	if err != nil {
-		return err
-	}
-
-	len := varInt(buf.Len())
-	_, err = len.writeTo(c)
-	if err != nil {
-		return err
-	}
-
-	_, err = buf.WriteTo(c)
-
-	return err
+func (pp Packet) Read(p []byte) (n int, err error) {
+	return pp.Data.Read(p)
 }
 
 const (
 	maxVarIntLen  = 5
 	maxVarLongLen = 10
+)
+
+type (
+	unsignedShort uint16
+	String        string
+	varInt        int32
 )
 
 func (us unsignedShort) writeTo(w io.Writer) (int64, error) {
@@ -139,6 +62,23 @@ func (v varInt) writeTo(w io.Writer) (int64, error) {
 	n := v.writeToBytes(vi[:])
 	n, err := w.Write(vi[:n])
 	return int64(n), err
+}
+
+func (v varInt) Len() int {
+	switch {
+	case v < 0:
+		return maxVarIntLen
+	case v < 1<<(7*1):
+		return 1
+	case v < 1<<(7*2):
+		return 2
+	case v < 1<<(7*3):
+		return 3
+	case v < 1<<(7*4):
+		return 4
+	default:
+		return 5
+	}
 }
 
 func (v varInt) writeToBytes(c []byte) int {
@@ -182,12 +122,13 @@ func (s *String) readFrom(r io.Reader) (int64, error) {
 	return n, nil
 }
 
-// readByte read one byte from io.Reader.
+// readByte read one byte from io.Reader
 func readByte(r io.Reader) (int64, byte, error) {
 	if r, ok := r.(io.ByteReader); ok {
 		v, err := r.ReadByte()
 		return 1, v, err
 	}
+
 	var v [1]byte
 	n, err := r.Read(v[:])
 	return int64(n), v[0], err
