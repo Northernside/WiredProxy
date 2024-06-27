@@ -120,13 +120,13 @@ func customHandler(path string, handler http.HandlerFunc, method string) {
 }
 
 func startServer() {
-	server, err := net.Listen("tcp", "127.0.0.1:37420")
+	server, err := net.Listen("tcp", ":37420")
 	if err != nil {
 		panic(err)
 	}
 
 	connected = true
-	log.Println("Communication server listening on 127.0.0.1:37420")
+	log.Println("Communication server listening on *:37420")
 	for {
 		conn, err := server.Accept()
 		if err != nil {
