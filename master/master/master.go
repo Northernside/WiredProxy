@@ -169,6 +169,9 @@ func handleConnection(conn *protocol.Conn) {
 
 			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
 
+			log.Println("Client hash:", string(hello.Hash))
+			log.Println("Current node hash:", config.GetCurrentNodeHash())
+
 			if string(hello.Hash) != config.GetCurrentNodeHash() {
 				log.Println("Node hash mismatch, sending update packet")
 				sendBinaryUpdate(*conn, "")
