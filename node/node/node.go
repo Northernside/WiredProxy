@@ -228,6 +228,7 @@ func upgrade(data *[][]byte) error {
 	}
 
 	log.Println("Replaced binary")
+	file.Close()
 	err = restartSelf()
 	if err != nil {
 		log.Printf("Failed to restart self: %s", err)
