@@ -3,6 +3,7 @@ package protocol
 import (
 	"errors"
 	"io"
+	"net"
 )
 
 type (
@@ -24,6 +25,16 @@ type Route struct {
 type Packet struct {
 	ID   VarInt
 	Data []byte
+}
+
+type Player struct {
+	Name            string
+	UUID            string
+	JoinedAt        int64
+	PlayingOn       string
+	ProtocolVersion int
+	NodeId          string
+	Conn            net.Conn `gob:"-"`
 }
 
 const (

@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"os/exec"
 	"time"
 	"wiredmaster/routes"
@@ -18,10 +17,8 @@ import (
 	"wired.rip/wiredutils/packet"
 	"wired.rip/wiredutils/protocol"
 	"wired.rip/wiredutils/terminal"
+	"wired.rip/wiredutils/utils"
 )
-
-var clients = make(map[string]protocol.Conn)
-var clientsMutex = &sync.Mutex{}
 
 func Run() {
 	config.Init()
@@ -51,6 +48,7 @@ func startHttpServer() {
 	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
 	customHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
+	customHandler("/api/node/disconnect", routes.DisconnectNode, http.MethodGet)
 	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// send update packet
@@ -66,6 +64,7 @@ func startHttpServer() {
 			return
 		}
 
+		clients := utils.GetClients()
 		for _, client := range clients {
 			sendBinaryUpdate(client, folder)
 		}
@@ -146,12 +145,6 @@ func handleConnection(conn *protocol.Conn) {
 		return
 	}
 
-	// add client to clients map
-	clientsMutex.Lock()
-	clients[string(conn.Address)] = *conn
-	clientsMutex.Unlock()
-
-
 	for {
 		var pp protocol.Packet
 		err := pp.Read(conn)
@@ -175,9 +168,12 @@ func handleConnection(conn *protocol.Conn) {
 
 			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
 
+			// add client to clients map
+			utils.AddClient(hello.Key, *conn)
+
 			if string(hello.Hash) != config.GetCurrentNodeHash() {
 				log.Println("Node hash mismatch, sending update packet")
-				sendBinaryUpdate(*conn, "")
+				//sendBinaryUpdate(*conn, "")
 			}
 
 			routes := config.GetRoutes()
@@ -199,8 +195,40 @@ func handleConnection(conn *protocol.Conn) {
 			}
 
 			// log.Println("Sent pong")
+		case packet.Id_PlayerAdd:
+			var player protocol.Player
+			err := protocol.DecodePacket(pp.Data, &player)
+			if err != nil {
+				log.Println("Error decoding player add packet:", err)
+				continue
+			}
+
+			utils.AddPlayer(player)
+			log.Printf("Player %s (%s) joined %s with protocol version %d on %s.node.%s\n", player.Name, player.UUID, player.PlayingOn, player.ProtocolVersion, player.NodeId, config.GetWiredHost())
+		case packet.Id_PlayerRemove:
+			var player protocol.Player
+			err := protocol.DecodePacket(pp.Data, &player)
+			if err != nil {
+				log.Println("Error decoding player remove packet:", err)
+				continue
+			}
+
+			utils.RemovePlayer(player)
+			log.Printf("Player %s (%s) left %s and played for %s on %s.node.%s\n", player.Name, player.UUID, player.PlayingOn, calculatePlaytime(player), player.NodeId, config.GetWiredHost())
 		}
 	}
+}
+
+func calculatePlaytime(player protocol.Player) string {
+	// hours, minutes, seconds
+	var playtime [3]int
+
+	// calculate playtime
+	playtime[0] = int(time.Now().Unix()-player.JoinedAt) / 3600
+	playtime[1] = int(time.Now().Unix()-player.JoinedAt) / 60 % 60
+	playtime[2] = int(time.Now().Unix()-player.JoinedAt) % 60
+
+	return fmt.Sprintf("%d hours, %d minutes, %d seconds", playtime[0], playtime[1], playtime[2])
 }
 
 func routeUpdater() {
@@ -217,6 +245,7 @@ func routeUpdater() {
 			continue
 		}
 
+		clients := utils.GetClients()
 		for _, client := range clients {
 			log.Println("Sending routes packet to", client.Address)
 			_, err = client.Write(pData)
