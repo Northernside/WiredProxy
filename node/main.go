@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"fmt"
+	"runtime"
 	"strings"
 	"wirednode/node"
 
@@ -33,7 +34,7 @@ func main() {
 
 func systemdInstall() {
 	// check if system is linux
-	if os.Getenv("OS") != "linux" {
+	if runtime.GOOS != "linux" {
 		log.Fatalln("Systemd installation is only available on linux")
 	}
 
