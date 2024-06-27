@@ -78,11 +78,13 @@ func EncodePacket(s any) ([]byte, error) {
 	if s == nil {
 		return nil, nil
 	}
+
 	var buf bytes.Buffer
 	err := gob.NewEncoder(&buf).Encode(s)
 	if err != nil {
 		return nil, err
 	}
+
 	return buf.Bytes(), nil
 }
 

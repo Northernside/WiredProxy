@@ -10,6 +10,8 @@ import (
 	"wired.rip/wiredutils/protocol"
 )
 
+var SignalChannel = make(chan bool, 8)
+
 func AddRoute(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -35,6 +37,8 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 
 	status := config.AddRoute(route)
 	w.WriteHeader(status)
+
+	SignalChannel <- true
 
 	w.Write([]byte(`{"message": "Route added", "route_id": "` + route.RouteId + `"}`))
 }

@@ -25,55 +25,9 @@ func Run() {
 	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
 
 	go startHttpServer()
-	go configChecker()
+	go routeUpdater()
 	loadWiredKeyPair()
 	startServer()
-}
-
-var currentRoutes []protocol.Route
-var connected = false
-
-func configChecker() {
-	log.Println("Starting config checker")
-	for {
-		if !connected {
-			log.Println("Not connected to any clients, waiting...")
-			time.Sleep(1 * time.Second)
-			continue
-		}
-
-		routes := config.GetRoutes()
-		if !routesEqual(currentRoutes, routes) {
-			currentRoutes = routes
-
-			log.Println("Sending updated routes to clients")
-			for _, client := range clients {
-				err := client.SendPacket(packet.Id_Routes, packet.Routes{
-					Routes: routes,
-				})
-
-				if err != nil {
-					log.Println("Error sending routes packet to client:", err)
-				}
-			}
-		}
-
-		time.Sleep(5 * time.Second)
-	}
-}
-
-func routesEqual(a, b []protocol.Route) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for i, route := range a {
-		if route != b[i] {
-			return false
-		}
-	}
-
-	return true
 }
 
 func startHttpServer() {
@@ -125,7 +79,6 @@ func startServer() {
 		panic(err)
 	}
 
-	connected = true
 	log.Println("Communication server listening on *:37420")
 	for {
 		conn, err := server.Accept()
@@ -210,6 +163,31 @@ func handleConnection(conn *protocol.Conn) {
 			}
 
 			// log.Println("Sent pong")
+		}
+	}
+}
+
+func routeUpdater() {
+	for {
+		<-routes.SignalChannel
+
+		log.Println("Sending routes packet to all clients")
+
+		pData, err := protocol.MarshalPacket(packet.Id_Routes, packet.Routes{
+			Routes: config.GetRoutes(),
+		})
+		if err != nil {
+			log.Println("Error encoding routes packet:", err)
+			continue
+		}
+
+		for _, client := range clients {
+			log.Println("Sending routes packet to", client.Address)
+			_, err = client.Write(pData)
+			if err != nil {
+				log.Println("Error sending routes packet to", client.Address, ":", err)
+				continue
+			}
 		}
 	}
 }
