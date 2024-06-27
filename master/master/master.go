@@ -45,6 +45,22 @@ func startHttpServer() {
 	customHandler("/api/routes", routes.GetRoutes, http.MethodGet)
 	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
+	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
+		// send update packet
+
+		for _, client := range clients {
+			log.Println("Sending update packet to", client.Address)
+			err := client.SendFile("upgrade", "../node/wirednode.exe", packet.Id_BinaryData, packet.Id_BinaryEnd)
+			if err != nil {
+				log.Println("Error sending update packet to", client.Address, ":", err)
+				continue
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "Update packet sent"}`))
+	}, http.MethodGet)
 
 	http.HandleFunc("/api/connect/publickey", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
