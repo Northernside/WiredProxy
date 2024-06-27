@@ -228,9 +228,26 @@ func upgrade(data *[][]byte) error {
 	}
 
 	log.Println("Replaced binary")
+	err = restartSelf()
+	if err != nil {
+		log.Printf("Failed to restart self: %s", err)
+		return err
+	}
 
-	syscall.Exec(exePath, os.Args, os.Environ())
 	return nil
+}
+
+func restartSelf() error {
+	log.Println("Restarting ...")
+	self, err := os.Executable()
+	if err != nil {
+		return err
+	}
+
+	args := os.Args
+	env := os.Environ()
+
+	return syscall.Exec(self, args, env)
 }
 
 func loadPublicKey() {
