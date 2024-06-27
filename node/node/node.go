@@ -354,7 +354,10 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 
-	fmt.Printf("retrieved")
+	var packet protocol.Packet
+	packet.ReadFrom(serverConn)
+
+	fmt.Printf("packet %d\n", packet.ID)
 
 	// C->S
 	go copyData(clientConn, serverConn)
