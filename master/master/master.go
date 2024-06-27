@@ -49,24 +49,26 @@ func startHttpServer() {
 	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
 	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		// send update packet
 
 		for _, client := range clients {
 			log.Println("Sending update packet to", client.Address)
 			folder := r.URL.Query().Get("folder")
 
-			var err error
-
 			// check if folder exists
-			if os.Stat(folder); err != nil {
-				log.Println("Error checking folder:", err)
-				continue
+			if _, err := os.Stat(folder); os.IsNotExist(err) {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(`{"message": "Folder not found"}`))
+				return
 			}
 
 			// check if folder/mod.go exists
-			if os.Stat(folder + "/go.mod"); err != nil {
+			if _, err := os.Stat(folder + "/go.mod"); os.IsNotExist(err) {
 				log.Println("Error checking go.mod:", err)
-				continue
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(`{"message": "go.mod not found"}`))
+				return
 			}
 
 			// read first line of mod.go
@@ -75,7 +77,9 @@ func startHttpServer() {
 			moduleFile, err := os.Open(folder + "/go.mod")
 			if err != nil {
 				log.Println("Error opening go.mod:", err)
-				continue
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"message": "Internal server error"}`))
+				return
 			}
 
 			// split by lines
@@ -83,7 +87,9 @@ func startHttpServer() {
 			scanner.Scan()
 			if scanner.Text() != "module wirednode" {
 				log.Println("Error: go.mod is not a wirednode module")
-				continue
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte(`{"message": "Not a wirednode module"}`))
+				return
 			}
 
 			// exec.Command
@@ -92,7 +98,9 @@ func startHttpServer() {
 			err = cmd.Run()
 			if err != nil {
 				log.Println("Error building module:", err)
-				continue
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte(`{"message": "Internal server error"}`))
+				return
 			}
 
 			filename := folder + "/wirednode"
@@ -103,7 +111,6 @@ func startHttpServer() {
 			}
 		}
 
-		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"message": "Update packet sent"}`))
 	}, http.MethodGet)
