@@ -20,6 +20,7 @@ import (
 )
 
 var clients = make(map[string]protocol.Conn)
+var clientsMutex = &sync.Mutex{}
 
 func Run() {
 	config.Init()
@@ -145,7 +146,10 @@ func handleConnection(conn *protocol.Conn) {
 	}
 
 	// add client to clients map
+	clientsMutex.Lock()
 	clients[string(conn.Address)] = *conn
+	clientsMutex.Unlock()
+
 
 	for {
 		var pp protocol.Packet

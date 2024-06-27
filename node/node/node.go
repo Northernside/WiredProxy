@@ -354,6 +354,8 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 
+	fmt.Printf("retrieved")
+
 	// C->S
 	go copyData(clientConn, serverConn)
 
