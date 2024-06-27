@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"log"
 	"os"
 	"os/exec"
@@ -13,7 +14,7 @@ import (
 	"wired.rip/wiredutils/terminal"
 )
 
-// go:embed wirednode.service
+//go:embed wirednode.service
 var wiredService string
 
 func main() {
@@ -85,8 +86,6 @@ func formatServiceFile() []byte {
 	wiredService = strings.ReplaceAll(wiredService, "{WORKINGDIR}", dir)
 	wiredService = strings.ReplaceAll(wiredService, "{BINPATH}", bin)
 	wiredService = strings.ReplaceAll(wiredService, "{PIDFILE}", dir+"/node.pid")
-
-	fmt.Println(wiredService)
 
 	return []byte(wiredService)
 }
