@@ -33,5 +33,5 @@ type Routes struct {
 
 type Disconnect struct {
 	PlayerUUID string
-	ServerHost string
+	ProxyHost  string
 }

@@ -19,7 +19,6 @@ import (
 	"wired.rip/wiredutils/config"
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
-	"wired.rip/wiredutils/resolver"
 	"wired.rip/wiredutils/utils"
 )
 
@@ -52,14 +51,14 @@ func dialMaster() {
 	var err error
 	failedAttempts := 0
 
-	remoteAddr, err := resolver.ResolveWired(config.GetWiredHost())
+	/*remoteAddr, err := resolver.ResolveWired(config.GetWiredHost())
 	if err != nil {
 		panic("Error resolving wired addr:" + err.Error()) // expected to recover
-	}
+	}*/
 
 	for {
-		c, err = net.Dial("tcp", remoteAddr.String())
-		// c, err = net.Dial("tcp", "127.0.0.1:37420")
+		// c, err = net.Dial("tcp", remoteAddr.String())
+		c, err = net.Dial("tcp", "127.0.0.1:37420")
 		if err == nil {
 			failedAttempts = 0
 			break
@@ -200,7 +199,7 @@ func handleMasterConnection() {
 				continue
 			}
 
-			player := utils.FindPlayer(disconnect.PlayerUUID, disconnect.ServerHost)
+			player := utils.FindPlayer(disconnect.PlayerUUID, disconnect.ProxyHost)
 			if player.Name == "" {
 				log.Println("Received disconnect packet for unknown player")
 				continue
@@ -288,8 +287,8 @@ func loadPublicKey() {
 }
 
 func requestPublicKey() (*rsa.PublicKey, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://master.%s/api/connect/publickey", config.GetWiredHost()), nil)
-	// req, err := http.NewRequest("GET", "http://127.0.0.1:37421/api/connect/publickey", nil)
+	// req, err := http.NewRequest("GET", fmt.Sprintf("https://master.%s/api/connect/publickey", config.GetWiredHost()), nil)
+	req, err := http.NewRequest("GET", "http://127.0.0.1:37421/api/connect/publickey", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -359,6 +358,7 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 
+	originalHostname := string(handshakePacket.Hostname)
 	handshakePacket.Hostname = protocol.String(route.ServerHost)
 
 	serverConn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort))
@@ -387,7 +387,7 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		log.Printf("Player %s (%x) connected to %s:%s\n", loginPacket.Name, loginPacket.UUID, route.ServerHost, route.ServerPort)
 
 		playingOn := fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort)
-		player := newPlayer(string(loginPacket.Name), fmt.Sprintf("%x", loginPacket.UUID), playingOn, int(handshakePacket.Version), clientConn)
+		player := newPlayer(string(loginPacket.Name), fmt.Sprintf("%x", loginPacket.UUID), playingOn, originalHostname, int(handshakePacket.Version), clientConn)
 
 		addPlayer(player)
 		defer removePlayer(player)
@@ -468,12 +468,13 @@ func sendErrorScreen(clientConn net.Conn, errorType int) {
 	statusResponse.WriteTo(clientConn)
 }
 
-func newPlayer(name string, uuid string, playingOn string, protocolVersion int, conn net.Conn) prtcl.Player {
+func newPlayer(name string, uuid string, playingOn string, proxyUsed string, protocolVersion int, conn net.Conn) prtcl.Player {
 	return prtcl.Player{
 		Name:            name,
 		UUID:            uuid,
 		JoinedAt:        time.Now().Unix(),
 		PlayingOn:       playingOn,
+		ProxyUsed:       proxyUsed,
 		ProtocolVersion: protocolVersion,
 		NodeId:          config.GetSystemKey(),
 		Conn:            conn,

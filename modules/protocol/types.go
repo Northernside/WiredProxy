@@ -32,6 +32,7 @@ type Player struct {
 	UUID            string
 	JoinedAt        int64
 	PlayingOn       string
+	ProxyUsed       string
 	ProtocolVersion int
 	NodeId          string
 	Conn            net.Conn `gob:"-"`

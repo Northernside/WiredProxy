@@ -31,12 +31,12 @@ func RemovePlayer(player protocol.Player) {
 	}
 }
 
-func FindPlayer(uuid string, host string) protocol.Player {
+func FindPlayer(uuid string, proxyUsed string) protocol.Player {
 	PlayersMux.Lock()
 	defer PlayersMux.Unlock()
 
 	for _, player := range PlayersArray {
-		if player.UUID == uuid && player.PlayingOn == host {
+		if player.UUID == uuid && player.ProxyUsed == proxyUsed {
 			return player
 		}
 	}

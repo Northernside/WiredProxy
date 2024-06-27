@@ -10,20 +10,20 @@ import (
 
 func DisconnectNode(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	// query: player_uuid, server_host
+	// query: player_uuid, proxy_host
 
 	playerUUID := r.URL.Query().Get("player_uuid")
-	serverHost := r.URL.Query().Get("server_host")
+	proxyHost := r.URL.Query().Get("proxy_host")
 
-	if playerUUID == "" || serverHost == "" {
+	if playerUUID == "" || proxyHost == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"message": "player_uuid and server_host are required"}`))
+		w.Write([]byte(`{"message": "player_uuid and proxy_host are required"}`))
 		return
 	}
 
 	// find player
-	log.Println("Disconnecting player", playerUUID, "from", serverHost)
-	player := utils.FindPlayer(playerUUID, serverHost)
+	log.Printf("Disconnecting player %s from %s", playerUUID, proxyHost)
+	player := utils.FindPlayer(playerUUID, proxyHost)
 	if player.Name == "" {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"message": "Player not found"}`))
@@ -43,7 +43,7 @@ func DisconnectNode(w http.ResponseWriter, r *http.Request) {
 
 	conn.SendPacket(packet.Id_DisconnectPlayer, packet.Disconnect{
 		PlayerUUID: playerUUID,
-		ServerHost: serverHost,
+		ProxyHost:  proxyHost,
 	})
 
 	w.WriteHeader(http.StatusOK)
