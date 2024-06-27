@@ -191,6 +191,28 @@ func handleMasterConnection() {
 
 				log.Printf("Wrote binary data to %s\n", file.Name())
 			}()
+		case packet.Id_DisconnectPlayer:
+			log.Printf("Received disconnect player packet at %s\n", time.Now().Format("15:04:05"))
+			var disconnect packet.Disconnect
+			err := prtcl.DecodePacket(pp.Data, &disconnect)
+			if err != nil {
+				log.Println("Error decoding disconnect packet:", err)
+				continue
+			}
+
+			player := utils.FindPlayer(disconnect.PlayerUUID, disconnect.ServerHost)
+			if player.Name == "" {
+				log.Println("Received disconnect packet for unknown player")
+				continue
+			}
+
+			log.Println(player)
+			err = player.Conn.Close()
+			if err != nil {
+				log.Println("Error closing player connection:", err)
+			}
+
+			log.Printf("Disconnected player %s from %s\n", player.Name, player.PlayingOn)
 		}
 	}
 }
@@ -354,6 +376,29 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 
+	if handshakePacket.NextState == 2 {
+		var loginPacket protocol.LoginPacket
+		err = loginPacket.ReadFrom(clientConn)
+		if err != nil {
+			log.Println("error reading login packet:", err)
+			return
+		}
+
+		log.Printf("Player %s (%x) connected to %s:%s\n", loginPacket.Name, loginPacket.UUID, route.ServerHost, route.ServerPort)
+
+		playingOn := fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort)
+		player := newPlayer(string(loginPacket.Name), fmt.Sprintf("%x", loginPacket.UUID), playingOn, int(handshakePacket.Version), clientConn)
+
+		addPlayer(player)
+		defer removePlayer(player)
+
+		err = loginPacket.WriteTo(serverConn)
+		if err != nil {
+			log.Println("error writing login packet to server:", err)
+			return
+		}
+	}
+
 	// C->S
 	go copyData(clientConn, serverConn)
 
@@ -421,4 +466,41 @@ func sendErrorScreen(clientConn net.Conn, errorType int) {
 
 	statusResponse.Status = protocol.String(n)
 	statusResponse.WriteTo(clientConn)
+}
+
+func newPlayer(name string, uuid string, playingOn string, protocolVersion int, conn net.Conn) prtcl.Player {
+	return prtcl.Player{
+		Name:            name,
+		UUID:            uuid,
+		JoinedAt:        time.Now().Unix(),
+		PlayingOn:       playingOn,
+		ProtocolVersion: protocolVersion,
+		NodeId:          config.GetSystemKey(),
+		Conn:            conn,
+	}
+}
+
+func addPlayer(p prtcl.Player) {
+	utils.AddPlayer(p)
+	p.Conn = nil
+
+	err := master.SendPacket(packet.Id_PlayerAdd, p)
+	if err != nil {
+		log.Println("Error sending player add packet:", err)
+	}
+}
+
+func removePlayer(p prtcl.Player) {
+	p.Conn = nil
+	utils.RemovePlayer(p)
+
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		err := master.SendPacket(packet.Id_PlayerRemove, p)
+		if err != nil {
+			log.Println("Error sending player remove packet:", err)
+		}
+
+		log.Printf("Player %s (%s) disconnected from %s\n", p.Name, p.UUID, p.PlayingOn)
+	}()
 }
