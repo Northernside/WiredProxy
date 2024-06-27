@@ -52,9 +52,19 @@ func startHttpServer() {
 		w.Header().Set("Content-Type", "application/json")
 		// send update packet
 
+		folder := r.URL.Query().Get("folder")
+		gitPullCmd := exec.Command("git", "pull")
+		gitPullCmd.Dir = folder
+		err := gitPullCmd.Run()
+		if err != nil {
+			log.Println("Error running git pull:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"message": "Internal server error"}`))
+			return
+		}
+
 		for _, client := range clients {
 			log.Println("Sending update packet to", client.Address)
-			folder := r.URL.Query().Get("folder")
 
 			// check if folder exists
 			if _, err := os.Stat(folder); os.IsNotExist(err) {
@@ -92,10 +102,9 @@ func startHttpServer() {
 				return
 			}
 
-			// exec.Command
-			cmd := exec.Command("go", "build")
-			cmd.Dir = folder
-			err = cmd.Run()
+			goBuildCmd := exec.Command("go", "build")
+			goBuildCmd.Dir = folder
+			err = goBuildCmd.Run()
 			if err != nil {
 				log.Println("Error building module:", err)
 				w.WriteHeader(http.StatusInternalServerError)
