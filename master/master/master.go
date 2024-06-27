@@ -1,12 +1,15 @@
 package master
 
 import (
+	"bufio"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 	"wiredmaster/routes"
 
@@ -50,9 +53,50 @@ func startHttpServer() {
 
 		for _, client := range clients {
 			log.Println("Sending update packet to", client.Address)
-			filename := r.URL.Query().Get("filename")
+			folder := r.URL.Query().Get("folder")
 
-			err := client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
+			var err error
+
+			// check if folder exists
+			if os.Stat(folder); err != nil {
+				log.Println("Error checking folder:", err)
+				continue
+			}
+
+			// check if folder/mod.go exists
+			if os.Stat(folder + "/go.mod"); err != nil {
+				log.Println("Error checking go.mod:", err)
+				continue
+			}
+
+			// read first line of mod.go
+			// and check if its "module wirednode"
+
+			moduleFile, err := os.Open(folder + "/go.mod")
+			if err != nil {
+				log.Println("Error opening go.mod:", err)
+				continue
+			}
+
+			// split by lines
+			scanner := bufio.NewScanner(moduleFile)
+			scanner.Scan()
+			if scanner.Text() != "module wirednode" {
+				log.Println("Error: go.mod is not a wirednode module")
+				continue
+			}
+
+			// exec.Command
+			cmd := exec.Command("go", "build")
+			cmd.Dir = folder
+			err = cmd.Run()
+			if err != nil {
+				log.Println("Error building module:", err)
+				continue
+			}
+
+			filename := folder + "/wirednode"
+			err = client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
 			if err != nil {
 				log.Println("Error sending update packet to", client.Address, ":", err)
 				continue
