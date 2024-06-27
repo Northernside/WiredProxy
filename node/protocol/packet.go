@@ -24,6 +24,7 @@ func (p *Packet) ReadFrom(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+
 	p.Data = bytes.NewBuffer(b)
 	return nil
 }

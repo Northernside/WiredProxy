@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 )
 
@@ -47,7 +46,7 @@ func (s *StatusResponse) ReadFrom(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(1)
+
 	_, err = s.Status.readFrom(p)
 	return err
 }
