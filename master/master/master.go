@@ -48,6 +48,7 @@ func startHttpServer() {
 	customHandler("/api/routes", routes.GetRoutes, http.MethodGet)
 	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
+	customHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
 	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// send update packet
