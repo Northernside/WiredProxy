@@ -20,7 +20,6 @@ import (
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
 	"wired.rip/wiredutils/resolver"
-	"wired.rip/wiredutils/terminal"
 	"wired.rip/wiredutils/utils"
 )
 
@@ -35,12 +34,7 @@ var (
 func Run(detectedHash string) {
 	nodeHash = detectedHash
 
-	config.Init()
 	config.SetCurrentNodeHash(nodeHash)
-
-	log.SetFlags(0)
-	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
-	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
 	log.Printf("Trying to connect to master.%s...\n", config.GetWiredHost())
 
 	connectToMaster()
