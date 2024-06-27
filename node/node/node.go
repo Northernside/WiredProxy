@@ -24,8 +24,20 @@ import (
 	"wired.rip/wiredutils/utils"
 )
 
-func Run() {
+var (
+	nodeHash      string
+	wiredPub      *rsa.PublicKey
+	master        *prtcl.Conn
+	binaryDataMux = &sync.Mutex{}
+	binaryData    = make(map[string]*[][]byte)
+)
+
+func Run(hash string) {
+	nodeHash = hash
+
 	config.Init()
+	config.SetCurrentNodeHash(nodeHash)
+
 	log.SetFlags(0)
 	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
 	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
@@ -33,13 +45,6 @@ func Run() {
 
 	connectToMaster()
 }
-
-var (
-	wiredPub      *rsa.PublicKey
-	master        *prtcl.Conn
-	binaryDataMux = &sync.Mutex{}
-	binaryData    = make(map[string]*[][]byte)
-)
 
 func connectToMaster() {
 	loadPublicKey()
@@ -93,7 +98,7 @@ func handleMasterConnection() {
 	master.SendPacket(packet.Id_Hello, packet.Hello{
 		Key:     config.GetSystemKey(),
 		Version: "1.0.0",
-		Hash:    []byte("test"),
+		Hash:    []byte(nodeHash),
 	})
 
 	go func() {
