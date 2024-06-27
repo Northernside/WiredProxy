@@ -241,6 +241,7 @@ func restartSelf() error {
 	log.Println("Restarting ...")
 	self, err := os.Executable()
 	if err != nil {
+		log.Println("Error getting executable path:", err)
 		return err
 	}
 
