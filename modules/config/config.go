@@ -20,10 +20,15 @@ type RoutesConfig struct {
 }
 
 type SystemConfig struct {
-	WiredHost       string           `json:"wired_host"`
-	SystemKey       string           `json:"system_key"`
-	CurrentNodeHash string           `json:"current_node_hash"`
-	Routes          []protocol.Route `json:"routes"`
+	WiredHost           string           `json:"wired_host"`
+	SystemKey           string           `json:"system_key"`
+	CurrentNodeHash     string           `json:"current_node_hash"`
+	DiscordClientId     string           `json:"discord_client_id"`
+	DiscordClientSecret string           `json:"discord_client_secret"`
+	DiscordRedirectUri  string           `json:"discord_redirect_uri"`
+	JwtSigningKey       string           `json:"jwt_signing_key"`
+	AdminDiscordId      string           `json:"admin_discord_id"`
+	Routes              []protocol.Route `json:"routes"`
 }
 
 var config SystemConfig
@@ -81,6 +86,26 @@ func SetCurrentNodeHash(hash string) {
 
 func GetCurrentNodeHash() string {
 	return config.CurrentNodeHash
+}
+
+func GetDiscordClientId() string {
+	return config.DiscordClientId
+}
+
+func GetDiscordClientSecret() string {
+	return config.DiscordClientSecret
+}
+
+func GetDiscordRedirectUri() string {
+	return config.DiscordRedirectUri
+}
+
+func GetJwtSigningKey() string {
+	return config.JwtSigningKey
+}
+
+func GetAdminDiscordId() string {
+	return config.AdminDiscordId
 }
 
 func Init() {

@@ -14,8 +14,10 @@ import (
 	"wiredmaster/routes"
 
 	"wired.rip/wiredutils/config"
+	"wired.rip/wiredutils/jwt"
 	"wired.rip/wiredutils/packet"
 	"wired.rip/wiredutils/protocol"
+	"wired.rip/wiredutils/sqlite"
 	"wired.rip/wiredutils/terminal"
 	"wired.rip/wiredutils/utils"
 )
@@ -28,8 +30,42 @@ func Run() {
 
 	go startHttpServer()
 	go routeUpdater()
+
+	sqlite.Init()
+	jwt.Init()
+
+	updateRoles()
 	loadWiredKeyPair()
 	startServer()
+}
+
+func updateRoles() {
+	adminId := config.GetAdminDiscordId()
+	if adminId == "" {
+		log.Println("No admin assigned in config.json yet")
+		return
+	}
+
+	// check if admin exists in database
+	_, _, _, _, role, err := sqlite.GetUser("discord_id", adminId)
+	if err != nil {
+		log.Println("Error checking if admin exists in database:", err)
+		return
+	}
+
+	if role == "" {
+		log.Println("Admin not yet in database. Consider signing in with Discord soon.")
+		return
+	}
+
+	if role != "admin" {
+		log.Println("Admin ID found in database, but role is not admin. Changing role to admin.")
+		err = sqlite.ChangeUserRole(adminId, "admin")
+		if err != nil {
+			log.Println("Error changing user role to admin:", err)
+			return
+		}
+	}
 }
 
 func startHttpServer() {
@@ -44,12 +80,13 @@ func startHttpServer() {
 		routes.IndexRoute(w, r)
 	})
 
-	customHandler("/api/routes", routes.GetRoutes, http.MethodGet)
-	customHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
-	customHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
-	customHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
-	customHandler("/api/node/disconnect", routes.DisconnectNode, http.MethodGet)
-	customHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
+	userHandler("/api/routes", routes.GetRoutes, http.MethodGet)
+	adminHandler("/api/users/role", routes.ChangeUserRole, http.MethodGet)
+	adminHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
+	adminHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
+	adminHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
+	adminHandler("/api/node/disconnect", routes.DisconnectNode, http.MethodGet)
+	adminHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// send update packet
 
@@ -73,6 +110,9 @@ func startHttpServer() {
 		w.Write([]byte(`{"message": "Update packet sent"}`))
 	}, http.MethodGet)
 
+	customHandler("/api/auth/discord", routes.AuthDiscord, http.MethodGet)
+	customHandler("/api/auth/discord/callback", routes.AuthDiscordCallback, http.MethodGet)
+
 	http.HandleFunc("/api/connect/publickey", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 		w.WriteHeader(http.StatusOK)
@@ -93,6 +133,80 @@ func customHandler(path string, handler http.HandlerFunc, method string) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			w.Write([]byte(`{"message": "Method not allowed"}`))
+			return
+		}
+
+		handler(w, r)
+	})
+}
+
+func adminHandler(path string, handler http.HandlerFunc, method string) {
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"message": "Method not allowed"}`))
+			return
+		}
+
+		authorization := r.Header.Get("Authorization")
+		if authorization == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
+			return
+		}
+
+		token := authorization[7:]
+		claims, err := jwt.ValidateToken(token)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
+			return
+		}
+
+		if claims["role"] != "admin" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
+			return
+		}
+
+		handler(w, r)
+	})
+}
+
+func userHandler(path string, handler http.HandlerFunc, method string) {
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != method {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			w.Write([]byte(`{"message": "Method not allowed"}`))
+			return
+		}
+
+		authorization := r.Header.Get("Authorization")
+		if authorization == "" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
+			return
+		}
+
+		token := authorization[7:]
+		claims, err := jwt.ValidateToken(token)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
+			return
+		}
+
+		if claims["role"] != "user" {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"message": "Unauthorized"}`))
 			return
 		}
 
