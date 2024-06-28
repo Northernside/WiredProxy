@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
@@ -355,7 +356,12 @@ func handleMinecraftConnection(clientConn net.Conn) {
 	route, ok := config.GetRouteByProxyDomain(string(handshakePacket.Hostname))
 	if !ok {
 		log.Printf("Route not found for %s (Client IP: %s)\n", handshakePacket.Hostname, clientConn.RemoteAddr().String())
-		sendErrorScreen(clientConn, 1)
+		if handshakePacket.NextState == 1 {
+			sendErrorScreen(clientConn, 1)
+		} else {
+			sendDisconnectScreen(clientConn, "§8[§7Wired§8] §cRoute not found")
+		}
+
 		return
 	}
 
@@ -365,7 +371,12 @@ func handleMinecraftConnection(clientConn net.Conn) {
 	serverConn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", route.ServerHost, route.ServerPort))
 	if err != nil {
 		log.Println("error connecting to server:", err)
-		sendErrorScreen(clientConn, 0)
+		if handshakePacket.NextState == 1 {
+			sendErrorScreen(clientConn, 0)
+		} else {
+			sendDisconnectScreen(clientConn, "§8[§7Wired§8] §cServer is offline")
+		}
+
 		return
 	}
 	defer serverConn.Close()
@@ -374,6 +385,12 @@ func handleMinecraftConnection(clientConn net.Conn) {
 	err = handshakePacket.WriteTo(serverConn)
 	if err != nil {
 		log.Println("error writing handshake packet to server:", err)
+		if handshakePacket.NextState == 1 {
+			sendErrorScreen(clientConn, 0)
+		} else {
+			sendDisconnectScreen(clientConn, "§8[§7Wired§8] §cServer is offline")
+		}
+
 		return
 	}
 
@@ -467,6 +484,18 @@ func sendErrorScreen(clientConn net.Conn, errorType int) {
 
 	statusResponse.Status = protocol.String(n)
 	statusResponse.WriteTo(clientConn)
+}
+
+func sendDisconnectScreen(clientConn net.Conn, reason string) {
+	buf := bytes.NewBuffer(make([]byte, 0))
+	prtcl.String("{\"text\":\"" + reason + "\"}").WriteTo(buf)
+
+	pp := prtcl.Packet{
+		ID:   0x00,
+		Data: buf.Bytes(),
+	}
+
+	pp.Write(clientConn)
 }
 
 func newPlayer(name string, uuid string, playingOn string, proxyUsed string, protocolVersion int, conn net.Conn) prtcl.Player {
