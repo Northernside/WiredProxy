@@ -3,7 +3,6 @@ package routes
 import (
 	"net/http"
 	"encoding/json"
-	"log"
 
 	"wired.rip/wiredutils/sqlite"
 )
