@@ -106,7 +106,7 @@ func AuthDiscordCallback(w http.ResponseWriter, r *http.Request) {
 	log.Printf("New sign-in: %s#%s (%s)", dUser.Username, dUser.Discriminator, dUser.ID)
 
 	var assignedRole string
-	_, _, _, _, role, err = sqlite.GetUser("discord_id", dUser.ID)
+	_, _, _, _, role, err := sqlite.GetUser("discord_id", dUser.ID)
 	if err != nil {
 		err = sqlite.CreateUser(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, "user")
 		if err != nil {
