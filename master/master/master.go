@@ -203,7 +203,7 @@ func userHandler(path string, handler http.HandlerFunc, method string) {
 			return
 		}
 
-		if claims["role"] != "user" {
+		if claims["role"] == "" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"message": "Unauthorized"}`))
