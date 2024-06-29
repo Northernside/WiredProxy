@@ -55,6 +55,41 @@ func GetUser(key, value string) (string, string, string, string, string, error) 
 	return discordId, username, discriminator, avatar, role, err
 }
 
+type DiscordUser struct {
+	DiscordId    string `json:"discord_id"`
+	Username     string `json:"username"`
+	Discriminator string `json:"discriminator"`
+	Avatar       string `json:"avatar"`
+	Role         string `json:"role"`
+}
+
+func GetUsers() []DiscordUser {
+	rows, err := db.Query("SELECT discord_id, username, discriminator, avatar, role FROM users")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	users := []DiscordUser{}
+	for rows.Next() {
+		var discordId, username, discriminator, avatar, role string
+		err := rows.Scan(&discordId, &username, &discriminator, &avatar, &role)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		users = append(users, DiscordUser{
+			DiscordId:    discordId,
+			Username:     username,
+			Discriminator: discriminator,
+			Avatar:       avatar,
+			Role:         role,
+		})
+	}
+
+	return users
+}
+
 func ChangeUserRole(discordId, role string) error {
 	_, err := db.Exec("UPDATE users SET role = ? WHERE discord_id = ?", role, discordId)
 	return err

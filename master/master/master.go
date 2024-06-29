@@ -85,6 +85,7 @@ func startHttpServer() {
 
 	userHandler("/api/routes", routes.GetRoutes, http.MethodGet)
 	userHandler("/api/nodes", routes.GetNodes, http.MethodGet)
+	userHandler("/api/users", routes.GetUsers, http.MethodGet)
 	adminHandler("/api/users/role", routes.ChangeUserRole, http.MethodGet)
 	adminHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	adminHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
