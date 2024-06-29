@@ -334,7 +334,7 @@ func handleConnection(conn *protocol.Conn) {
 			}
 
 			utils.AddPlayer(player)
-			log.Printf("Player %s (%s) joined %s with protocol version %d on %s.node.%s\n", player.Name, player.UUID, player.PlayingOn, player.ProtocolVersion, player.NodeId, config.GetWiredHost())
+			log.Printf("Player %s (%s) joined %s with protocol version %d on %s.%s\n", player.Name, player.UUID, player.PlayingOn, player.ProtocolVersion, player.NodeId, config.GetWiredHost())
 		case packet.Id_PlayerRemove:
 			var player protocol.Player
 			err := protocol.DecodePacket(pp.Data, &player)
@@ -344,7 +344,7 @@ func handleConnection(conn *protocol.Conn) {
 			}
 
 			utils.RemovePlayer(player)
-			log.Printf("Player %s (%s) left %s and played for %s on %s.node.%s\n", player.Name, player.UUID, player.PlayingOn, calculatePlaytime(player), player.NodeId, config.GetWiredHost())
+			log.Printf("Player %s (%s) left %s and played for %s on %s.%s\n", player.Name, player.UUID, player.PlayingOn, calculatePlaytime(player), player.NodeId, config.GetWiredHost())
 		}
 	}
 }
