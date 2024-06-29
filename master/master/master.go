@@ -4,12 +4,15 @@ import (
 	"bufio"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 	"wiredmaster/routes"
 
@@ -81,6 +84,7 @@ func startHttpServer() {
 	})
 
 	userHandler("/api/routes", routes.GetRoutes, http.MethodGet)
+	userHandler("/api/nodes", routes.GetNodes, http.MethodGet)
 	adminHandler("/api/users/role", routes.ChangeUserRole, http.MethodGet)
 	adminHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	adminHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
@@ -232,7 +236,13 @@ func startServer() {
 }
 
 func handleConnection(conn *protocol.Conn) {
-	defer conn.Close()
+	key := conn.RemoteAddr().String()
+	defer func() {
+		_ = conn.Close()
+
+		log.Printf("Node %s.%s disconnected at %s\n", key, config.GetWiredHost(), time.Now().Format("15:04:05"))
+		utils.RemoveClient(key)
+	}()
 
 	var pp protocol.Packet
 	err := pp.Read(conn)
@@ -263,6 +273,10 @@ func handleConnection(conn *protocol.Conn) {
 		var pp protocol.Packet
 		err := pp.Read(conn)
 		if err != nil {
+			if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "connection reset by peer") {
+				return
+			}
+
 			// log.Println("Error reading packet:", err)
 			continue
 		}
@@ -280,6 +294,7 @@ func handleConnection(conn *protocol.Conn) {
 				continue
 			}
 
+			key = hello.Key
 			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
 
 			// add client to clients map

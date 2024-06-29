@@ -6,12 +6,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -20,16 +22,16 @@ import (
 	"wired.rip/wiredutils/config"
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
-	"wired.rip/wiredutils/resolver"
 	"wired.rip/wiredutils/utils"
 )
 
 var (
-	nodeHash      string
-	wiredPub      *rsa.PublicKey
-	master        *prtcl.Conn
-	binaryDataMux = &sync.Mutex{}
-	binaryData    = make(map[string]*[][]byte)
+	nodeHash       string
+	wiredPub       *rsa.PublicKey
+	master         *prtcl.Conn
+	failedAttempts = 0
+	binaryDataMux  = &sync.Mutex{}
+	binaryData     = make(map[string]*[][]byte)
 )
 
 func Run(detectedHash string) {
@@ -43,7 +45,6 @@ func Run(detectedHash string) {
 
 func connectToMaster() {
 	loadPublicKey()
-	dialMaster()
 	go handleMasterConnection()
 	startProxyServer()
 }
@@ -51,7 +52,6 @@ func connectToMaster() {
 func dialMaster() {
 	var c net.Conn
 	var err error
-	failedAttempts := 0
 
 	remoteAddr, err := resolver.ResolveWired(config.GetWiredHost())
 	if err != nil {
@@ -111,6 +111,15 @@ func handleMasterConnection() {
 		var pp prtcl.Packet
 		err := pp.Read(master)
 		if err != nil {
+			if errors.Is(err, io.EOF) || strings.Contains(err.Error(), "failed to get reader: use of closed network connection") {
+				log.Println("Master connection closed")
+
+				ok := loadPublicKey()
+				if ok {
+					go handleMasterConnection()
+				}
+			}
+
 			// log.Println("Error reading packet:", err)
 			continue
 		}
@@ -274,7 +283,7 @@ func restartSelf() error {
 	return syscall.Exec(self, args, env)
 }
 
-func loadPublicKey() {
+func loadPublicKey() bool {
 	var err error
 	for {
 		wiredPub, err = requestPublicKey()
@@ -284,8 +293,11 @@ func loadPublicKey() {
 			continue
 		}
 
+		dialMaster()
 		break
 	}
+
+	return true
 }
 
 func requestPublicKey() (*rsa.PublicKey, error) {
