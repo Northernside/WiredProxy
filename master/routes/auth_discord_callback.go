@@ -105,7 +105,8 @@ func AuthDiscordCallback(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("New sign-in: %s#%s (%s)", dUser.Username, dUser.Discriminator, dUser.ID)
 
-	_, _, _, _, _, err = sqlite.GetUser("discord_id", dUser.ID)
+	var assignedRole string
+	_, _, _, _, role, err = sqlite.GetUser("discord_id", dUser.ID)
 	if err != nil {
 		err = sqlite.CreateUser(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, "user")
 		if err != nil {
@@ -113,9 +114,13 @@ func AuthDiscordCallback(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(`{"message": "Failed to create user", "error": "` + err.Error() + `"}`))
 			return
 		}
+
+		assignedRole = "user"
+	} else {
+		assignedRole = role
 	}
 
-	jwtToken, err := jwt.CreateToken(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, "user")
+	jwtToken, err := jwt.CreateToken(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, assignedRole)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"message": "Failed to create JWT token", "error": "` + err.Error() + `"}`))
