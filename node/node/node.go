@@ -22,6 +22,7 @@ import (
 	"wired.rip/wiredutils/config"
 	"wired.rip/wiredutils/packet"
 	prtcl "wired.rip/wiredutils/protocol"
+	"wired.rip/wiredutils/resolver"
 	"wired.rip/wiredutils/utils"
 )
 
