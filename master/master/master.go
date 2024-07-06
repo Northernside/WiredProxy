@@ -241,6 +241,11 @@ func handleConnection(conn *protocol.Conn) {
 	defer func() {
 		_ = conn.Close()
 
+		_, ok := utils.FindClient(key)
+		if !ok {
+			return
+		}
+
 		log.Printf("Node %s.%s disconnected at %s\n", key, config.GetWiredHost(), time.Now().Format("15:04:05"))
 		utils.RemoveClient(key)
 	}()
@@ -303,7 +308,7 @@ func handleConnection(conn *protocol.Conn) {
 
 			if string(hello.Hash) != config.GetCurrentNodeHash() {
 				log.Println("Node hash mismatch, sending update packet")
-				//sendBinaryUpdate(*conn, "")
+				sendBinaryUpdate(*conn, "")
 			}
 
 			routes := config.GetRoutes()
