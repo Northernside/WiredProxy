@@ -26,6 +26,13 @@ func AddRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_route, ok := config.GetRouteByProxyDomain(proxyDomain)
+	if ok {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(`{"message": "proxy_domain already in use", "route_id": "` + _route.RouteId + `"}`))
+		return
+	}
+
 	// add route
 	route := protocol.Route{
 		RouteId:     randomId(),
