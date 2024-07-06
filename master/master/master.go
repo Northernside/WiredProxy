@@ -1,7 +1,6 @@
 package master
 
 import (
-	"bufio"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
@@ -90,6 +89,7 @@ func startHttpServer() {
 	adminHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	adminHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
 	adminHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
+	adminHandler("/api/node/update-binary", routes.UpdateBinary, http.MethodPost)
 	adminHandler("/api/node/disconnect", routes.DisconnectNode, http.MethodGet)
 	adminHandler("/api/node/update", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -308,7 +308,7 @@ func handleConnection(conn *protocol.Conn) {
 
 			if string(hello.Hash) != config.GetCurrentNodeHash() {
 				log.Println("Node hash mismatch, sending update packet")
-				sendBinaryUpdate(*conn, "")
+				sendBinaryUpdate(*conn, "updates")
 			}
 
 			routes := config.GetRoutes()
@@ -395,50 +395,13 @@ func routeUpdater() {
 func sendBinaryUpdate(client protocol.Conn, _folder string) {
 	log.Println("Sending update packet to", client.Address)
 
-	folder := _folder
-	if _folder == "" {
-		folder = "../node"
-	}
-
-	// check if folder exists
-	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		log.Println("Error checking folder:", err)
+	filename := _folder + "/wirednode"
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		log.Println("File", filename, "does not exist")
 		return
 	}
 
-	// check if folder/mod.go exists
-	if _, err := os.Stat(folder + "/go.mod"); os.IsNotExist(err) {
-		log.Println("Error checking go.mod:", err)
-		return
-	}
-
-	// read first line of mod.go
-	// and check if its "module wirednode"
-
-	moduleFile, err := os.Open(folder + "/go.mod")
-	if err != nil {
-		log.Println("Error opening go.mod:", err)
-		return
-	}
-
-	// split by lines
-	scanner := bufio.NewScanner(moduleFile)
-	scanner.Scan()
-	if scanner.Text() != "module wirednode" {
-		log.Println("Error: go.mod is not a wirednode module")
-		return
-	}
-
-	goBuildCmd := exec.Command("go", "build")
-	goBuildCmd.Dir = folder
-	err = goBuildCmd.Run()
-	if err != nil {
-		log.Println("Error building module:", err)
-		return
-	}
-
-	filename := folder + "/wirednode"
-	err = client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
+	err := client.SendFile("upgrade", filename, packet.Id_BinaryData, packet.Id_BinaryEnd)
 	if err != nil {
 		log.Println("Error sending update packet to", client.Address, ":", err)
 		return
