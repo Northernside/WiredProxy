@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 	"wiredmaster/routes"
@@ -95,20 +94,9 @@ func startHttpServer() {
 		w.Header().Set("Content-Type", "application/json")
 		// send update packet
 
-		folder := r.URL.Query().Get("folder")
-		gitPullCmd := exec.Command("git", "pull")
-		gitPullCmd.Dir = folder
-		err := gitPullCmd.Run()
-		if err != nil {
-			log.Println("Error running git pull:", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(`{"message": "Internal server error"}`))
-			return
-		}
-
 		clients := utils.GetClients()
 		for _, client := range clients {
-			sendBinaryUpdate(client, folder)
+			sendBinaryUpdate(client, "updates")
 		}
 
 		w.WriteHeader(http.StatusOK)
