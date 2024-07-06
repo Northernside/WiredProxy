@@ -108,14 +108,19 @@ func AuthDiscordCallback(w http.ResponseWriter, r *http.Request) {
 	var assignedRole string
 	_, _, _, _, role, err := sqlite.GetUser("discord_id", dUser.ID)
 	if err != nil {
-		err = sqlite.CreateUser(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, "user")
+		demoMode := config.GetMode() == "demo"
+		if demoMode {
+			assignedRole = "demo"
+		} else {
+			assignedRole = "user"
+		}
+
+		err = sqlite.CreateUser(dUser.ID, dUser.Username, dUser.Discriminator, dUser.Avatar, assignedRole)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(`{"message": "Failed to create user", "error": "` + err.Error() + `"}`))
 			return
 		}
-
-		assignedRole = "user"
 	} else {
 		assignedRole = role
 	}

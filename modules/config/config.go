@@ -28,6 +28,7 @@ type SystemConfig struct {
 	DiscordRedirectUri  string           `json:"discord_redirect_uri"`
 	JwtSigningKey       string           `json:"jwt_signing_key"`
 	AdminDiscordId      string           `json:"admin_discord_id"`
+	Mode                string           `json:"mode"`
 	Routes              []protocol.Route `json:"routes"`
 }
 
@@ -106,6 +107,10 @@ func GetJwtSigningKey() string {
 
 func GetAdminDiscordId() string {
 	return config.AdminDiscordId
+}
+
+func GetMode() string {
+	return config.Mode
 }
 
 func Init() {

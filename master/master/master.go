@@ -120,6 +120,22 @@ func startHttpServer() {
 	http.ListenAndServe("127.0.0.1:37421", nil)
 }
 
+func containsRoute(endpoint string) bool {
+	demoEndpoints := []string{
+		"/api/routes",
+		"/api/nodes",
+		"/api/users/add",
+	}
+
+	for _, e := range demoEndpoints {
+		if e == endpoint {
+			return true
+		}
+	}
+
+	return false
+}
+
 func customHandler(path string, handler http.HandlerFunc, method string) {
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != method {
@@ -160,10 +176,12 @@ func adminHandler(path string, handler http.HandlerFunc, method string) {
 		}
 
 		if claims["role"] != "admin" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Unauthorized"}`))
-			return
+			if config.GetMode() != "demo" && !containsRoute(r.URL.Path) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"message": "Unauthorized"}`))
+				return
+			}
 		}
 
 		handler(w, r)
@@ -201,6 +219,15 @@ func userHandler(path string, handler http.HandlerFunc, method string) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"message": "Unauthorized"}`))
 			return
+		}
+
+		if config.GetMode() == "demo" {
+			if !containsRoute(r.URL.Path) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"message": "Unauthorized"}`))
+				return
+			}
 		}
 
 		handler(w, r)
