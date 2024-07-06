@@ -48,6 +48,12 @@ func UpdateBinary(w http.ResponseWriter, r *http.Request) {
 }
 
 func saveFile(fileName string, file multipart.File) error {
+	// create directory
+	err := os.MkdirAll("updates", os.ModePerm)
+	if err != nil {
+		return err
+	}
+
 	// create file
 	f, err := os.Create(fileName)
 	if err != nil {
