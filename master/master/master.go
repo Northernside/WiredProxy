@@ -234,8 +234,6 @@ func userHandler(path string, handler http.HandlerFunc, method string) {
 		}
 
 		if config.GetMode() == "demo" {
-			log.Println("test")
-			log.Println(r.URL.Path)
 			if !containsRoute(r.URL.Path) {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
