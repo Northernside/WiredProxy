@@ -176,7 +176,19 @@ func adminHandler(path string, handler http.HandlerFunc, method string) {
 		}
 
 		if claims["role"] != "admin" {
+			authorized := false
+
 			if config.GetMode() != "demo" {
+				authorized = false
+			} else {
+				if !containsRoute(r.URL.Path) {
+					authorized = false
+				} else {
+					authorized = true
+				}
+			}
+
+			if !authorized {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(`{"message": "Unauthorized"}`))
