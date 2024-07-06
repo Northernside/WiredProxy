@@ -124,7 +124,7 @@ func containsRoute(endpoint string) bool {
 	demoEndpoints := []string{
 		"/api/routes",
 		"/api/nodes",
-		"/api/users/add",
+		"/api/routes/add",
 	}
 
 	for _, e := range demoEndpoints {
@@ -176,7 +176,7 @@ func adminHandler(path string, handler http.HandlerFunc, method string) {
 		}
 
 		if claims["role"] != "admin" {
-			if config.GetMode() != "demo" && !containsRoute(r.URL.Path) {
+			if config.GetMode() != "demo" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte(`{"message": "Unauthorized"}`))
