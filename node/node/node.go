@@ -356,7 +356,14 @@ func startProxyServer() {
 }
 
 func handleMinecraftConnection(clientConn net.Conn) {
-	defer clientConn.Close()
+	defer func() {
+		r := recover()
+		if r != nil {
+			log.Println("recovered from:", r)
+		}
+
+		clientConn.Close()
+	}()
 
 	var handshakePacket protocol.HandshakePacket
 	err := handshakePacket.ReadFrom(clientConn)

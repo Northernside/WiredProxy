@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"bytes"
+	"errors"
 	"io"
 )
 
@@ -10,6 +11,10 @@ func (p *Packet) ReadFrom(r io.Reader) error {
 	_, err := packetLength.readFrom(r)
 	if err != nil {
 		return err
+	}
+
+	if packetLength < 1 {
+		return errors.New("packet length is negative")
 	}
 
 	var packet_id varInt
