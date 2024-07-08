@@ -25,3 +25,5 @@ go.work
 *.pub
 *.db
 *.sum
+
+.DS_Store
