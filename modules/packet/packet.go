@@ -17,9 +17,10 @@ const (
 )
 
 type Hello struct {
-	Key     string
-	Version string
-	Hash    []byte
+	Key        string
+	Version    string
+	Passphrase string
+	Hash       []byte
 }
 
 type BinaryData struct {

@@ -87,6 +87,8 @@ func startHttpServer() {
 	adminHandler("/api/users/role", routes.ChangeUserRole, http.MethodGet)
 	adminHandler("/api/routes/add", routes.AddRoute, http.MethodGet)
 	adminHandler("/api/routes/remove", routes.RemoveRoute, http.MethodDelete)
+	adminHandler("/api/node/add", routes.AddNode, http.MethodGet)
+	adminHandler("/api/node/delete", routes.DeleteNode, http.MethodGet)
 	adminHandler("/api/node/set-hash", routes.SetNodeHash, http.MethodGet)
 	adminHandler("/api/node/update-binary", routes.UpdateBinary, http.MethodPost)
 	adminHandler("/api/node/disconnect", routes.DisconnectNode, http.MethodGet)
@@ -328,6 +330,17 @@ func handleConnection(conn *protocol.Conn) {
 			}
 
 			key = hello.Key
+			connectingNode, ok := config.GetNode(key)
+			if !ok {
+				log.Printf("Unknown node %s tried to connect\n", fmt.Sprintf("%s.%s", key, config.GetWiredHost()))
+				return
+			}
+
+			if hello.Passphrase != connectingNode.Passphrase {
+				log.Printf("Node %s tried to connect with invalid passphrase\n", fmt.Sprintf("%s.%s", key, config.GetWiredHost()))
+				return
+			}
+
 			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
 
 			// add client to clients map

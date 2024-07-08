@@ -19,6 +19,12 @@ type RoutesConfig struct {
 	Routes []protocol.Route `json:"routes"`
 }
 
+type Node struct {
+	Id             string `json:"id"`
+	Passphrase     string `json:"passphrase"`
+	LastConnection int64  `json:"last_connection"`
+}
+
 type SystemConfig struct {
 	WiredHost           string           `json:"wired_host"`
 	SystemKey           string           `json:"system_key"`
@@ -29,6 +35,7 @@ type SystemConfig struct {
 	JwtSigningKey       string           `json:"jwt_signing_key"`
 	AdminDiscordId      string           `json:"admin_discord_id"`
 	Mode                string           `json:"mode"`
+	Nodes               []Node           `json:"nodes"`
 	Routes              []protocol.Route `json:"routes"`
 }
 
@@ -60,6 +67,39 @@ func DeleteRoute(routeId string) int {
 
 func GetRoutes() []protocol.Route {
 	return config.Routes
+}
+
+func GetNodes() []Node {
+	return config.Nodes
+}
+
+func GetNode(nodeId string) (Node, bool) {
+	for _, n := range config.Nodes {
+		if n.Id == nodeId {
+			return n, true
+		}
+	}
+
+	return Node{}, false
+}
+
+func AddNode(node Node) int {
+	config.Nodes = append(config.Nodes, node)
+	saveConfigFile("config.json")
+
+	return http.StatusOK
+}
+
+func DeleteNode(nodeId string) int {
+	for i, n := range config.Nodes {
+		if n.Id == nodeId {
+			config.Nodes = append(config.Nodes[:i], config.Nodes[i+1:]...)
+			saveConfigFile("config.json")
+			return http.StatusOK
+		}
+	}
+
+	return http.StatusNotFound
 }
 
 func GetSystemKey() string {
