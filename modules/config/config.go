@@ -34,6 +34,7 @@ type SystemConfig struct {
 	DiscordRedirectUri  string           `json:"discord_redirect_uri"`
 	JwtSigningKey       string           `json:"jwt_signing_key"`
 	AdminDiscordId      string           `json:"admin_discord_id"`
+	Passphrase          string           `json:"passphrase"`
 	Mode                string           `json:"mode"`
 	Nodes               []Node           `json:"nodes"`
 	Routes              []protocol.Route `json:"routes"`
@@ -104,6 +105,10 @@ func DeleteNode(nodeId string) int {
 
 func GetSystemKey() string {
 	return config.SystemKey
+}
+
+func GetPassphrase() string {
+	return config.Passphrase
 }
 
 func GetWiredHost() string {
