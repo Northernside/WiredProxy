@@ -24,5 +24,7 @@ func RemoveRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	SignalChannel <- true
+
 	w.Write([]byte(`{"message": "Route removed"}`))
 }
