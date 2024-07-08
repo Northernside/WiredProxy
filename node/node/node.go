@@ -92,9 +92,10 @@ func handleMasterConnection() {
 	log.Println("Secure connection established")
 
 	master.SendPacket(packet.Id_Hello, packet.Hello{
-		Key:     config.GetSystemKey(),
-		Version: "1.0.0",
-		Hash:    []byte(nodeHash),
+		Key:        config.GetSystemKey(),
+		Version:    "1.0.0",
+		Passphrase: config.GetPassphrase(),
+		Hash:       []byte(nodeHash),
 	})
 
 	go func() {
@@ -402,6 +403,10 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 	defer serverConn.Close()
+
+	if handshakePacket.NextState == 3 {
+		handshakePacket.NextState = 2
+	}
 
 	// Send handshake packet to server
 	err = handshakePacket.WriteTo(serverConn)
