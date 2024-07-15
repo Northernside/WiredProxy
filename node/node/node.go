@@ -376,6 +376,12 @@ func handleMinecraftConnection(clientConn net.Conn) {
 		return
 	}
 
+	forgeSeperator := "\x00"
+	if strings.Contains(string(handshakePacket.Hostname), forgeSeperator) {
+		split := strings.Split(string(handshakePacket.Hostname), forgeSeperator)
+		handshakePacket.Hostname = protocol.String(split[0])
+	}
+
 	route, ok := config.GetRouteByProxyDomain(string(handshakePacket.Hostname))
 	if !ok {
 		log.Printf("Route not found for %s (Client IP: %s)\n", handshakePacket.Hostname, clientConn.RemoteAddr().String())
