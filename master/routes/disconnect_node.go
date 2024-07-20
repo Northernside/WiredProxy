@@ -31,7 +31,7 @@ func DisconnectNode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send packet packet.Id_DisconnectPlayer
-	conn, ok := utils.FindClient(player.NodeId)
+	conn, _, ok := utils.FindClient(player.NodeId)
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"message": "Node not found"}`))

@@ -32,6 +32,8 @@ func main() {
 			systemdInstall()
 		case "setup":
 			setup(args[1:])
+		case "debug":
+			log.Println(runtime.GOARCH)
 		}
 	} else {
 		node.Run(getFileHash())

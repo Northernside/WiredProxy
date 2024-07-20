@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -38,7 +39,7 @@ var (
 func Run(detectedHash string) {
 	nodeHash = detectedHash
 
-	config.SetCurrentNodeHash(nodeHash)
+	config.SetCurrentNodeHash(nodeHash, runtime.GOARCH)
 	log.Printf("Trying to connect to master.%s...\n", config.GetWiredHost())
 
 	connectToMaster()
@@ -95,6 +96,7 @@ func handleMasterConnection() {
 		Key:        config.GetSystemKey(),
 		Version:    "1.0.0",
 		Passphrase: config.GetPassphrase(),
+		Arch:       runtime.GOARCH,
 		Hash:       []byte(nodeHash),
 	})
 

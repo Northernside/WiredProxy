@@ -28,7 +28,8 @@ type Node struct {
 type SystemConfig struct {
 	WiredHost           string           `json:"wired_host"`
 	SystemKey           string           `json:"system_key"`
-	CurrentNodeHash     string           `json:"current_node_hash"`
+	CurrentAmd64Hash    string           `json:"current_amd64_hash"`
+	CurrentArm64Hash    string           `json:"current_arm64_hash"`
 	DiscordClientId     string           `json:"discord_client_id"`
 	DiscordClientSecret string           `json:"discord_client_secret"`
 	DiscordRedirectUri  string           `json:"discord_redirect_uri"`
@@ -135,13 +136,26 @@ func GetRouteByProxyDomain(proxyDomain string) (protocol.Route, bool) {
 	return protocol.Route{}, false
 }
 
-func SetCurrentNodeHash(hash string) {
-	config.CurrentNodeHash = hash
+func SetCurrentNodeHash(hash string, arch string) {
+	switch arch {
+	case "amd64":
+		config.CurrentAmd64Hash = hash
+	case "arm64":
+		config.CurrentArm64Hash = hash
+	}
+
 	saveConfigFile("config.json")
 }
 
-func GetCurrentNodeHash() string {
-	return config.CurrentNodeHash
+func GetCurrentNodeHash(arch string) string {
+	switch arch {
+	case "amd64":
+		return config.CurrentAmd64Hash
+	case "arm64":
+		return config.CurrentArm64Hash
+	}
+
+	return ""
 }
 
 func GetDiscordClientId() string {
@@ -172,10 +186,11 @@ func Init() {
 	// create if not exists
 	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
 		config = SystemConfig{
-			WiredHost:       "wired.rip",
-			SystemKey:       fmt.Sprintf("node-%s", utils.GenerateString(8)),
-			CurrentNodeHash: "",
-			Routes:          []protocol.Route{},
+			WiredHost:        "wired.rip",
+			SystemKey:        fmt.Sprintf("node-%s", utils.GenerateString(8)),
+			CurrentAmd64Hash: "",
+			CurrentArm64Hash: "",
+			Routes:           []protocol.Route{},
 		}
 
 		saveConfigFile("config.json")

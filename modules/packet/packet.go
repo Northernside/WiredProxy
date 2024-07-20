@@ -20,6 +20,7 @@ type Hello struct {
 	Key        string
 	Version    string
 	Passphrase string
+	Arch       string
 	Hash       []byte
 }
 

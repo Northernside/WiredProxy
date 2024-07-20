@@ -16,6 +16,13 @@ import (
 func UpdateBinary(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	archQuery := r.URL.Query().Get("arch")
+	if archQuery == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"message": "arch is required"}`))
+		return
+	}
+
 	// get file from form
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -26,7 +33,7 @@ func UpdateBinary(w http.ResponseWriter, r *http.Request) {
 	defer file.Close()
 
 	// save file
-	err = saveFile("updates/wirednode", file)
+	err = saveFile("updates/wirednode-"+archQuery, file)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"message": "Error saving file"}`))
@@ -34,7 +41,7 @@ func UpdateBinary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// get file hash
-	hash := getFileHash("updates/wirednode")
+	hash := getFileHash("updates/wirednode-" + archQuery)
 	if hash == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"message": "Error getting file hash"}`))

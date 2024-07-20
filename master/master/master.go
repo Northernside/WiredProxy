@@ -270,7 +270,7 @@ func handleConnection(conn *protocol.Conn) {
 	defer func() {
 		_ = conn.Close()
 
-		_, ok := utils.FindClient(key)
+		_, _, ok := utils.FindClient(key)
 		if !ok {
 			return
 		}
@@ -341,12 +341,15 @@ func handleConnection(conn *protocol.Conn) {
 				return
 			}
 
-			log.Printf("Client %s.%s connected with version %s\n", hello.Key, config.GetWiredHost(), hello.Version)
+			log.Printf("Client %s.%s connected with version %s (%s)\n", hello.Key, config.GetWiredHost(), hello.Version, hello.Arch)
 
 			// add client to clients map
-			utils.AddClient(hello.Key, *conn)
+			utils.AddClient(hello.Key, *conn, utils.Node{
+				Key:  hello.Key,
+				Arch: hello.Arch,
+			})
 
-			if string(hello.Hash) != config.GetCurrentNodeHash() {
+			if string(hello.Hash) != config.GetCurrentNodeHash(hello.Arch) {
 				log.Println("Node hash mismatch, sending update packet")
 				sendBinaryUpdate(*conn, "updates")
 			}
@@ -435,7 +438,15 @@ func routeUpdater() {
 func sendBinaryUpdate(client protocol.Conn, _folder string) {
 	log.Println("Sending update packet to", client.Address)
 
-	filename := _folder + "/wirednode"
+	client, data, ok := utils.FindClient(client.Address.String())
+	if !ok {
+		log.Println("Client", client.Address, "not found")
+		return
+	}
+
+	log.Println("Sending update packet to", data.Key, "with arch", data.Arch)
+
+	filename := _folder + "/wirednode-" + data.Arch
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		log.Println("File", filename, "does not exist")
 		return
