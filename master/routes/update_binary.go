@@ -48,7 +48,7 @@ func UpdateBinary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	config.SetCurrentNodeHash(hash)
+	config.SetCurrentNodeHash(hash, archQuery)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`{"message": "Binary uploaded"}`))
