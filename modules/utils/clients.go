@@ -56,8 +56,8 @@ func GetClients() map[string]protocol.Conn {
 	defer ClientsMutex.Unlock()
 
 	clients := make(map[string]protocol.Conn)
-	for key, client := range Clients {
-		clients[key] = client.Conn
+	for _, client := range Clients {
+		clients[client.Key] = client.Conn
 	}
 
 	return clients
