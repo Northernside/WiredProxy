@@ -103,8 +103,18 @@ func DeleteNode(nodeId string) int {
 	return http.StatusNotFound
 }
 
+func SetSystemKey(key string) {
+	config.SystemKey = key
+	saveConfigFile("config.json")
+}
+
 func GetSystemKey() string {
 	return config.SystemKey
+}
+
+func SetPassphrase(passphrase string) {
+	config.Passphrase = passphrase
+	saveConfigFile("config.json")
 }
 
 func GetPassphrase() string {

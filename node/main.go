@@ -2,10 +2,10 @@ package main
 
 import (
 	_ "embed"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"fmt"
 	"runtime"
 	"strings"
 	"wirednode/node"
@@ -23,17 +23,34 @@ func main() {
 	prefix := fmt.Sprintf("%s.%s » ", config.GetSystemKey(), config.GetWiredHost())
 	log.SetPrefix(terminal.PrefixColor + prefix + terminal.Reset)
 
-	if (len(os.Args) > 1) {
+	if len(os.Args) > 1 {
 		args := os.Args[1:]
 		switch args[0] {
 		case "start":
 			node.Run(getFileHash())
 		case "install":
 			systemdInstall()
+		case "setup":
+			setup(args[1:])
 		}
 	} else {
 		node.Run(getFileHash())
 	}
+}
+
+func setup(args []string) {
+	if len(args) < 2 {
+		log.Fatalln("No arguments provided -> setup <key> <password>")
+	}
+
+	key := args[0]
+	password := args[1]
+
+	config.Init()
+	config.SetSystemKey(key)
+	config.SetPassphrase(password)
+
+	log.Println("Setup complete")
 }
 
 func systemdInstall() {
@@ -71,7 +88,7 @@ func systemdInstall() {
 	if err != nil {
 		log.Fatalln("Error starting service:", err)
 	}
-	
+
 	log.Println("Service installed and started")
 }
 
