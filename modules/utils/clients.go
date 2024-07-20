@@ -26,7 +26,7 @@ func AddClient(key string, conn protocol.Conn, data Node) {
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
 
-	Clients[key] = Client{
+	Clients[conn.GetAddress().String()] = Client{
 		Key:  key,
 		Conn: conn,
 		Data: data,
