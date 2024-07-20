@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 	"wiredmaster/routes"
 
@@ -345,19 +344,11 @@ func handleConnection(conn *protocol.Conn) {
 
 			log.Printf("Client %s.%s connected with version %s (%s)\n", hello.Key, config.GetWiredHost(), hello.Version, hello.Arch)
 
-			wg := &sync.WaitGroup{}
-			go func() {
-				wg.Add(1)
-				// add client to clients map
-				utils.AddClient(hello.Key, *conn, utils.Node{
-					Key:  hello.Key,
-					Arch: hello.Arch,
-				})
-
-				wg.Done()
-			}()
-
-			wg.Wait()
+			// add client to clients map
+			utils.AddClient(hello.Key, *conn, utils.Node{
+				Key:  hello.Key,
+				Arch: hello.Arch,
+			})
 
 			if string(hello.Hash) != config.GetCurrentNodeHash(hello.Arch) {
 				log.Println("Node hash mismatch, sending update packet")
