@@ -439,6 +439,7 @@ func routeUpdater() {
 func sendBinaryUpdate(client protocol.Conn, _folder string) {
 	log.Println("Sending update packet to", client.Address)
 
+	log.Println(client.RemoteAddr())
 	_, data, ok := utils.FindClient(client.RemoteAddr().String())
 	if !ok {
 		log.Println("Client", client.Address, "not found")
