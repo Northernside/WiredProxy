@@ -98,6 +98,7 @@ func startHttpServer() {
 
 		clients := utils.GetClients()
 		for _, client := range clients {
+			log.Println(client)
 			sendBinaryUpdate(client, "updates")
 		}
 
@@ -438,7 +439,7 @@ func routeUpdater() {
 func sendBinaryUpdate(client protocol.Conn, _folder string) {
 	log.Println("Sending update packet to", client.Address)
 
-	client, data, ok := utils.FindClient(client.Address.String())
+	_, data, ok := utils.FindClient(client.Address.String())
 	if !ok {
 		log.Println("Client", client.Address, "not found")
 		return
